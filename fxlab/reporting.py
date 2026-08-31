@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import MutableMapping
 from datetime import datetime, timezone
 from html import escape
 from io import BytesIO
 from pathlib import Path
+from uuid import uuid4
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -18,6 +20,35 @@ from .config import APP_TITLE, REPORT_DIR, SIMULATION_PATHS
 from .risk import budget_income, calculate_risk_metrics, hedged_income
 
 
+def get_session_report_dir(
+    state: MutableMapping[str, object], report_dir: Path = REPORT_DIR
+) -> Path:
+    """Return an unguessable per-session directory under the local report archive."""
+    session_id = state.get("report_session_id")
+    if not isinstance(session_id, str) or not session_id:
+        session_id = uuid4().hex
+        state["report_session_id"] = session_id
+    path = report_dir / session_id
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def remember_report(
+    state: MutableMapping[str, object],
+    name: str,
+    pdf_bytes: bytes,
+    html_text: str,
+    limit: int = 20,
+) -> None:
+    """Keep only this Streamlit session's downloadable report history."""
+    history = state.get("generated_reports")
+    if not isinstance(history, list):
+        history = []
+        state["generated_reports"] = history
+    history.insert(0, {"name": name, "pdf": pdf_bytes, "html": html_text})
+    del history[limit:]
+
+
 def _report_payload(state: dict) -> dict:
     data = state["fx_data"]
     models = state["model_result"]
@@ -26,9 +57,7 @@ def _report_payload(state: dict) -> dict:
     incomes = hedged_income(
         state["amount"], ratio, state["forward_rate"], simulation.terminal_rates
     )
-    metrics = calculate_risk_metrics(
-        incomes, budget_income(state["amount"], state["budget_rate"])
-    )
+    metrics = calculate_risk_metrics(incomes, budget_income(state["amount"], state["budget_rate"]))
     return {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "data": data,
@@ -49,9 +78,7 @@ def _report_payload(state: dict) -> dict:
 def build_html_report(state: dict) -> str:
     p = _report_payload(state)
     xgb, garch = p["models"].xgboost, p["models"].garch
-    table_html = p["strategy_table"].to_html(
-        index=False, float_format=lambda x: f"{x:,.4f}"
-    )
+    table_html = p["strategy_table"].to_html(index=False, float_format=lambda x: f"{x:,.4f}")
     return f"""<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><title>{escape(APP_TITLE)} 实验报告</title>
 <style>body{{font-family:-apple-system,BlinkMacSystemFont,"Microsoft YaHei",sans-serif;color:#24384b;max-width:980px;margin:40px auto;line-height:1.7}}h1,h2{{color:#17324d}}.meta{{color:#66788a}}table{{border-collapse:collapse;width:100%;font-size:13px}}th,td{{border:1px solid #dce6ef;padding:7px;text-align:right}}th{{background:#eef5fb}}.note{{background:#f3f7fa;padding:12px;border-left:4px solid #3278b5}}@media print{{body{{margin:18mm}}}}</style></head><body>
@@ -199,7 +226,9 @@ def save_report(
     report_dir: Path = REPORT_DIR,
 ) -> tuple[Path, Path]:
     report_dir.mkdir(parents=True, exist_ok=True)
-    stem = f"{datetime.now(timezone.utc):%Y%m%d_%H%M%S}_出口收汇_{int(amount)}USD_{int(term_days)}天"
+    stem = (
+        f"{datetime.now(timezone.utc):%Y%m%d_%H%M%S}_出口收汇_{int(amount)}USD_{int(term_days)}天"
+    )
     html_path, pdf_path = report_dir / f"{stem}.html", report_dir / f"{stem}.pdf"
     html_path.write_text(html_text, encoding="utf-8")
     pdf_path.write_bytes(pdf_bytes)

@@ -1,9 +1,12 @@
-from pathlib import Path
-
 import streamlit as st
 
-from ..config import REPORT_DIR
-from ..reporting import build_html_report, build_pdf_report, save_report
+from ..reporting import (
+    build_html_report,
+    build_pdf_report,
+    get_session_report_dir,
+    remember_report,
+    save_report,
+)
 from ..ui import page_header
 from .common import ensure_simulation
 
@@ -44,15 +47,23 @@ def render() -> None:
             try:
                 html_text = build_html_report(dict(st.session_state))
                 pdf_bytes = build_pdf_report(dict(st.session_state))
+                session_report_dir = get_session_report_dir(st.session_state)
                 html_path, pdf_path = save_report(
                     html_text,
                     pdf_bytes,
                     st.session_state.amount,
                     st.session_state.term_days,
+                    report_dir=session_report_dir,
                 )
                 st.session_state.last_report_html = html_text
                 st.session_state.last_report_pdf = pdf_bytes
                 st.session_state.last_report_name = pdf_path.stem
+                remember_report(
+                    st.session_state,
+                    pdf_path.stem,
+                    pdf_bytes,
+                    html_text,
+                )
                 st.success(f"报告已保存：{pdf_path.name} / {html_path.name}")
             except (OSError, RuntimeError, TypeError, ValueError) as exc:
                 st.error(f"报告生成失败：{exc}")
@@ -73,15 +84,26 @@ def render() -> None:
             use_container_width=True,
         )
     st.subheader("本次运行的历史报告")
-    files = sorted(Path(REPORT_DIR).glob("*.pdf"), reverse=True)[:20]
-    if not files:
+    reports = st.session_state.get("generated_reports", [])
+    if not reports:
         st.caption("尚未生成报告。")
     else:
-        for path in files:
-            st.download_button(
-                path.name,
-                path.read_bytes(),
-                path.name,
+        for index, report in enumerate(reports):
+            st.caption(report["name"])
+            pdf_col, html_col = st.columns(2)
+            pdf_col.download_button(
+                "重新下载 PDF",
+                report["pdf"],
+                f"{report['name']}.pdf",
                 "application/pdf",
-                key=f"history_{path.name}",
+                key=f"history_pdf_{index}_{report['name']}",
+                use_container_width=True,
+            )
+            html_col.download_button(
+                "重新下载 HTML",
+                report["html"],
+                f"{report['name']}.html",
+                "text/html",
+                key=f"history_html_{index}_{report['name']}",
+                use_container_width=True,
             )

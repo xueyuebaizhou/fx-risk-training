@@ -1,9 +1,20 @@
+from collections.abc import MutableMapping
+
 import streamlit as st
 
 from ..risk import budget_income, calculate_risk_metrics, hedge_effect, hedged_income
 from ..state import invalidate_if_inputs_changed
 from ..ui import cny, page_header
 from .common import ensure_simulation
+
+
+def apply_quick_ratio(state: MutableMapping[str, object], ratio_percent: int) -> None:
+    state["hedge_ratio_slider"] = ratio_percent
+    state["hedge_ratio"] = ratio_percent / 100
+
+
+def _apply_quick_ratio(ratio_percent: int) -> None:
+    apply_quick_ratio(st.session_state, ratio_percent)
 
 
 def render() -> None:
@@ -23,20 +34,19 @@ def render() -> None:
         )
         st.caption("该数值由课程案例设定，不是实时银行报价。")
     with c2:
-        st.session_state.setdefault(
-            "hedge_ratio_slider", int(st.session_state.hedge_ratio * 100)
-        )
-        ratio_percent = st.slider(
-            "连续套保比例 h", 0, 100, key="hedge_ratio_slider", format="%d%%"
-        )
+        st.session_state.setdefault("hedge_ratio_slider", int(st.session_state.hedge_ratio * 100))
+        ratio_percent = st.slider("连续套保比例 h", 0, 100, key="hedge_ratio_slider", format="%d%%")
         st.session_state.hedge_ratio = ratio_percent / 100
     st.caption("快捷比例")
     cols = st.columns(5)
     for col, ratio in zip(cols, (0, 25, 50, 75, 100), strict=True):
-        if col.button(f"{ratio}%", use_container_width=True, key=f"quick_{ratio}"):
-            st.session_state.hedge_ratio = ratio / 100
-            st.session_state.hedge_ratio_slider = ratio
-            st.rerun()
+        col.button(
+            f"{ratio}%",
+            use_container_width=True,
+            key=f"quick_{ratio}",
+            on_click=_apply_quick_ratio,
+            args=(ratio,),
+        )
     invalidate_if_inputs_changed()
     simulation = ensure_simulation()
     if simulation is None:
@@ -59,9 +69,7 @@ def render() -> None:
         ),
         r_budget,
     )
-    reduction = (
-        (baseline.cfar95 - metrics.cfar95) / baseline.cfar95 if baseline.cfar95 else 0
-    )
+    reduction = (baseline.cfar95 - metrics.cfar95) / baseline.cfar95 if baseline.cfar95 else 0
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("锁定美元金额", f"${st.session_state.amount * h:,.0f}")
     m2.metric("平均人民币收入", cny(metrics.mean_income))
@@ -69,9 +77,7 @@ def render() -> None:
     m4.metric("CFaR 风险下降", f"{reduction:.1%}")
     mean_terminal = float(simulation.terminal_rates.mean())
     mean_effect = float(
-        hedge_effect(
-            st.session_state.amount, h, st.session_state.forward_rate, mean_terminal
-        )
+        hedge_effect(st.session_state.amount, h, st.session_state.forward_rate, mean_terminal)
     )
     st.markdown(
         f"<div class='formula'>R_hedged = A[hF + (1-h)S_T]<br>在本次情景平均到期汇率 {mean_terminal:.4f} 下，远期相对完全不套保的收入差额为 {cny(mean_effect)}。</div>",

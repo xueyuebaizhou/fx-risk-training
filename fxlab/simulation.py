@@ -49,7 +49,8 @@ def simulate_fx_paths(
     steps = calendar_to_trading_days(term_days)
     rng = np.random.default_rng(seed)
     shocks = rng.standard_normal((n_paths, steps))
-    log_steps = (daily_drift - 0.5 * daily_volatility**2) + daily_volatility * shocks
+    # daily_drift is already the mean log return, so no half-variance adjustment applies.
+    log_steps = daily_drift + daily_volatility * shocks
     paths = spot_rate * np.exp(np.cumsum(log_steps, axis=1))
     return SimulationResult(
         paths=paths,
@@ -77,9 +78,7 @@ def compare_hedge_strategies(
         incomes = hedged_income(amount, ratio, forward_rate, terminal_rates)
         metrics = calculate_risk_metrics(incomes, r_budget)
         reduction = (
-            (baseline.cfar95 - metrics.cfar95) / baseline.cfar95
-            if baseline.cfar95 > 0
-            else 0.0
+            (baseline.cfar95 - metrics.cfar95) / baseline.cfar95 if baseline.cfar95 > 0 else 0.0
         )
         rows.append(
             {

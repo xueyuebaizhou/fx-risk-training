@@ -39,3 +39,17 @@ def test_strategy_table_uses_one_terminal_sample(fitted_models, real_frame):
     assert table["套保比例"].tolist() == [0, 0.25, 0.5, 0.75, 1]
     assert table["收入标准差"].is_monotonic_decreasing
     assert table.iloc[-1]["收入标准差"] < 1e-6
+
+
+def test_log_return_drift_is_used_without_half_variance_adjustment():
+    spot, drift, volatility, seed = 7.0, 0.0002, 0.01, 12345
+    result = simulate_fx_paths(
+        spot_rate=spot,
+        term_days=1,
+        daily_drift=drift,
+        daily_volatility=volatility,
+        seed=seed,
+    )
+    shocks = np.random.default_rng(seed).standard_normal(SIMULATION_PATHS)
+    expected_terminal = spot * np.exp(drift + volatility * shocks)
+    assert np.allclose(result.terminal_rates, expected_terminal)
