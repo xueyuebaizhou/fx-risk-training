@@ -1,31 +1,23 @@
-# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
+
 .venv/
 venv/
-
-# Runtime data and generated reports
-.cache/
-reports/*
-!reports/.gitkeep
-*.log
-
-# Secrets
-.streamlit/secrets.toml
 .env
 .env.*
-!.env.example
+.streamlit/secrets.toml
 
-# Local tooling
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+reports/*.pdf
+reports/*.html
+reports/*.docx
+!reports/.gitkeep
 
-# Uploaded references are not source code
 *.docx
 原app_cloud*.py
+.DS_Store
+.idea/
+.vscode/

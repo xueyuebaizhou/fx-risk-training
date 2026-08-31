@@ -1,0 +1,108 @@
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
+
+from ..services import get_model_result
+from ..ui import data_note, page_header
+
+
+def _volatility_state(result) -> tuple[str, float]:
+    history = np.asarray(result.conditional_volatility)
+    percentile = float(np.mean(history <= result.daily_volatility))
+    if percentile < 1 / 3:
+        return "低风险", percentile
+    if percentile < 2 / 3:
+        return "中风险", percentile
+    return "高风险", percentile
+
+
+def render() -> None:
+    page_header(
+        "STEP 02 / DATA & AI",
+        "汇率数据与 AI 模型",
+        "同一套真实日频数据用于走势、特征、XGBoost 测试、GARCH 波动率与后续情景参数。",
+    )
+    data = st.session_state.fx_data
+    data_note(data)
+    frame = data.frame
+    tabs = st.tabs(["历史汇率", "日对数收益率", "20日滚动年化波动率"])
+    with tabs[0]:
+        fig = px.line(
+            frame, x="date", y="rate", labels={"date": "日期", "rate": "USD/CNY"}
+        )
+        fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[1]:
+        returns = frame.dropna(subset=["log_return"]).copy()
+        returns["收益率（%）"] = returns["log_return"] * 100
+        fig = px.line(returns, x="date", y="收益率（%）", labels={"date": "日期"})
+        fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
+        st.plotly_chart(fig, use_container_width=True)
+    with tabs[2]:
+        vol = frame.dropna(subset=["rolling_vol_20"])
+        fig = px.line(
+            vol,
+            x="date",
+            y="rolling_vol_20",
+            labels={"date": "日期", "rolling_vol_20": "年化波动率"},
+        )
+        fig.update_yaxes(tickformat=".1%")
+        fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
+        st.plotly_chart(fig, use_container_width=True)
+
+    if st.button("运行 GARCH 与 XGBoost", type="primary", use_container_width=True):
+        with st.spinner("按时间顺序 80%/20% 划分并进行真实测试集计算……"):
+            st.session_state.model_result = get_model_result(data.end_date, frame)
+            st.session_state.simulation_result = None
+            st.session_state.strategy_table = None
+    result = st.session_state.get("model_result")
+    if result is None:
+        st.info("点击按钮后才会拟合模型；页面不会显示预设准确率。")
+        return
+    xgb, garch = result.xgboost, result.garch
+    state, percentile = _volatility_state(garch)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("下一交易日预测", f"{xgb.prediction_next_day:.4f}", f"{xgb.direction}")
+    m2.metric("MAE", f"{xgb.mae:.6f}")
+    m3.metric("RMSE", f"{xgb.rmse:.6f}")
+    m4.metric("方向准确率 DA", f"{xgb.direction_accuracy:.2%}")
+    g1, g2, g3 = st.columns(3)
+    g1.metric("GARCH 预测日波动率", f"{garch.daily_volatility:.4%}")
+    g2.metric("GARCH 预测年化波动率", f"{garch.annual_volatility:.2%}")
+    g3.metric("数据相对波动状态", state, f"历史百分位 {percentile:.1%}")
+    st.caption(
+        f"训练样本 {xgb.train_size}，测试样本 {xgb.test_size}；时间顺序划分，不随机打乱。波动状态是相对本数据历史分布的教学标签。"
+    )
+    c1, c2 = st.columns(2)
+    with c1:
+        pred = pd.DataFrame(
+            {
+                "日期": pd.to_datetime(xgb.test_dates),
+                "真实值": xgb.test_actual,
+                "预测值": xgb.test_predicted,
+            }
+        )
+        fig = go.Figure(
+            [
+                go.Scatter(x=pred["日期"], y=pred["真实值"], name="真实值"),
+                go.Scatter(x=pred["日期"], y=pred["预测值"], name="预测值"),
+            ]
+        )
+        fig.update_layout(
+            title="测试集：真实值与预测值",
+            height=350,
+            margin={"l": 10, "r": 10, "t": 45, "b": 10},
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    with c2:
+        fig = px.bar(
+            xgb.feature_importance.sort_values("重要性"),
+            x="重要性",
+            y="特征",
+            orientation="h",
+            title="XGBoost 特征重要性",
+        )
+        fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10})
+        st.plotly_chart(fig, use_container_width=True)
