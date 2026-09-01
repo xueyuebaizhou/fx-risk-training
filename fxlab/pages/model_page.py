@@ -4,7 +4,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from ..config import MODEL_RESULT_SCHEMA_VERSION
 from ..services import get_model_result
+from ..state import clear_derived_results, model_result_is_current
 from ..ui import data_note, page_header
 
 
@@ -26,6 +28,8 @@ def render() -> None:
     )
     data = st.session_state.fx_data
     data_note(data)
+    if st.session_state.pop("model_refresh_required", False):
+        st.info("应用模型结构已更新，旧结果已安全清除；请重新运行模型。")
     frame = data.frame
     tabs = st.tabs(["历史汇率", "日对数收益率", "20日滚动年化波动率"])
     with tabs[0]:
@@ -33,13 +37,13 @@ def render() -> None:
             frame, x="date", y="rate", labels={"date": "日期", "rate": "USD/CNY"}
         )
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with tabs[1]:
         returns = frame.dropna(subset=["log_return"]).copy()
         returns["收益率（%）"] = returns["log_return"] * 100
         fig = px.line(returns, x="date", y="收益率（%）", labels={"date": "日期"})
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with tabs[2]:
         vol = frame.dropna(subset=["rolling_vol_20"])
         fig = px.line(
@@ -50,14 +54,22 @@ def render() -> None:
         )
         fig.update_yaxes(tickformat=".1%")
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
-    if st.button("运行 GARCH 与 XGBoost", type="primary", use_container_width=True):
+    if st.button("运行 GARCH 与 XGBoost", type="primary", width="stretch"):
         with st.spinner("按时间顺序 80%/20% 划分并进行真实测试集计算……"):
-            st.session_state.model_result = get_model_result(data.end_date, frame)
+            st.session_state.model_result = get_model_result(
+                data.end_date,
+                frame,
+                MODEL_RESULT_SCHEMA_VERSION,
+            )
             st.session_state.simulation_result = None
             st.session_state.strategy_table = None
     result = st.session_state.get("model_result")
+    if not model_result_is_current(result):
+        clear_derived_results(st.session_state)
+        st.warning("检测到旧版模型缓存，已安全清除；请重新运行模型。")
+        return
     if result is None:
         st.info("点击按钮后才会拟合模型；页面不会显示预设准确率。")
         return
@@ -105,7 +117,7 @@ def render() -> None:
             height=350,
             margin={"l": 10, "r": 10, "t": 45, "b": 10},
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with c2:
         fig = px.bar(
             xgb.feature_importance.sort_values("重要性"),
@@ -115,4 +127,4 @@ def render() -> None:
             title="XGBoost 特征重要性",
         )
         fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10})
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")

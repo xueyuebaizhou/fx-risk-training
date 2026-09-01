@@ -70,7 +70,7 @@ def render() -> None:
     for col, ratio in zip(cols, (0, 25, 50, 75, 100), strict=True):
         col.button(
             f"{ratio}%",
-            use_container_width=True,
+            width="stretch",
             key=f"quick_{ratio}",
             on_click=_apply_quick_ratio,
             args=(ratio,),

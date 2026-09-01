@@ -13,6 +13,7 @@ from .config import (
     DEFAULT_FORWARD_RATE,
     DEFAULT_HEDGE_RATIO,
     DEFAULT_TERM_DAYS,
+    MODEL_RESULT_SCHEMA_VERSION,
 )
 
 DEFAULTS = {
@@ -30,7 +31,7 @@ DEFAULTS = {
     "decision_reason": "",
 }
 
-STATE_SCHEMA_VERSION = 2
+STATE_SCHEMA_VERSION = 3
 SCENARIO_INPUT_KEYS = (
     "amount",
     "term_days",
@@ -39,17 +40,54 @@ SCENARIO_INPUT_KEYS = (
     "forward_rate",
     "hedge_ratio",
 )
+DERIVED_RESULT_KEYS = ("model_result", "simulation_result", "strategy_table")
+MODEL_RESULT_ATTRIBUTES = (
+    "xgboost",
+    "garch",
+    "sample_start_date",
+    "sample_end_date",
+    "sample_size",
+)
+
+
+def clear_derived_results(state: MutableMapping[str, Any]) -> None:
+    """Invalidate every result that depends on the fitted model."""
+    for key in DERIVED_RESULT_KEYS:
+        state[key] = None
+
+
+def model_result_is_current(result: object) -> bool:
+    """Reject cached model objects created before the current result schema."""
+    if result is None:
+        return True
+    return getattr(result, "schema_version", None) == MODEL_RESULT_SCHEMA_VERSION and all(
+        hasattr(result, attribute) for attribute in MODEL_RESULT_ATTRIBUTES
+    )
+
+
+def _stored_schema_version(state: MutableMapping[str, Any]) -> int:
+    try:
+        return int(state.get("state_schema_version", 0) or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def prepare_state(state: MutableMapping[str, Any]) -> None:
     """Initialise canonical scenario state and repair values from the old widget schema."""
     for key, value in DEFAULTS.items():
         state.setdefault(key, value)
-    if int(state.get("state_schema_version", 0) or 0) < STATE_SCHEMA_VERSION:
+    previous_version = _stored_schema_version(state)
+    if previous_version < 2:
         # The previous page-local widget could initialise F from its 0.0001 lower bound.
         if float(state.get("forward_rate") or 0.0) < 1.0:
             state["forward_rate"] = DEFAULT_FORWARD_RATE
-        state["state_schema_version"] = STATE_SCHEMA_VERSION
+    stale_model = not model_result_is_current(state.get("model_result"))
+    if previous_version < STATE_SCHEMA_VERSION or stale_model:
+        had_model_result = state.get("model_result") is not None
+        clear_derived_results(state)
+        if had_model_result:
+            state["model_refresh_required"] = True
+    state["state_schema_version"] = STATE_SCHEMA_VERSION
 
 
 def prepare_widget_value(

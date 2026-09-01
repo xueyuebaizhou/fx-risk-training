@@ -28,7 +28,7 @@ def render() -> None:
         display[col] = display[col].map(lambda x: f"¥{x:,.2f}")
     display["Risk Ratio"] = display["Risk Ratio"].map(lambda x: f"{x:.2%}")
     display["风险下降幅度"] = display["风险下降幅度"].map(lambda x: f"{x:.1%}")
-    st.dataframe(display, use_container_width=True, hide_index=True)
+    st.dataframe(display, width="stretch", hide_index=True)
     st.select_slider(
         "最终选择的远期套保比例",
         options=[0.0, 0.25, 0.5, 0.75, 1.0],
@@ -41,7 +41,7 @@ def render() -> None:
         key="decision_reason",
         max_chars=500,
     )
-    if st.button("生成并保存实验报告", type="primary", use_container_width=True):
+    if st.button("生成并保存实验报告", type="primary", width="stretch"):
         if not st.session_state.decision_reason.strip():
             st.error("请先填写策略选择理由。")
         else:
@@ -75,14 +75,14 @@ def render() -> None:
             st.session_state.last_report_pdf,
             f"{st.session_state.last_report_name}.pdf",
             "application/pdf",
-            use_container_width=True,
+            width="stretch",
         )
         c2.download_button(
             "下载 HTML",
             st.session_state.last_report_html,
             f"{st.session_state.last_report_name}.html",
             "text/html",
-            use_container_width=True,
+            width="stretch",
         )
     st.subheader("本次运行的历史报告")
     reports = st.session_state.get("generated_reports", [])
@@ -98,7 +98,7 @@ def render() -> None:
                 f"{report['name']}.pdf",
                 "application/pdf",
                 key=f"history_pdf_{index}_{report['name']}",
-                use_container_width=True,
+                width="stretch",
             )
             html_col.download_button(
                 "重新下载 HTML",
@@ -106,5 +106,5 @@ def render() -> None:
                 f"{report['name']}.html",
                 "text/html",
                 key=f"history_html_{index}_{report['name']}",
-                use_container_width=True,
+                width="stretch",
             )

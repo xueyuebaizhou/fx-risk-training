@@ -8,7 +8,13 @@ from arch import arch_model
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from xgboost import XGBRegressor
 
-from .config import MIN_GARCH_ROWS, MIN_MODEL_ROWS, MODEL_LOOKBACK_YEARS, TRADING_DAYS
+from .config import (
+    MIN_GARCH_ROWS,
+    MIN_MODEL_ROWS,
+    MODEL_LOOKBACK_YEARS,
+    MODEL_RESULT_SCHEMA_VERSION,
+    TRADING_DAYS,
+)
 
 FEATURE_LABELS = {
     "rate": "当前汇率",
@@ -61,6 +67,7 @@ class ModelResult:
     sample_start_date: str
     sample_end_date: str
     sample_size: int
+    schema_version: int = MODEL_RESULT_SCHEMA_VERSION
 
 
 def direction_label(prediction: float, current_rate: float) -> str:
