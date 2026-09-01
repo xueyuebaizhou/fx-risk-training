@@ -49,7 +49,7 @@ def render() -> None:
         height=380,
         margin={"l": 10, "r": 10, "t": 45, "b": 10},
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     c1, c2 = st.columns(2)
     with c1:
         fig = px.histogram(
@@ -59,7 +59,7 @@ def render() -> None:
             title="到期汇率分布",
         )
         fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10})
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     with c2:
         incomes = hedged_income(
             st.session_state.amount,
@@ -74,7 +74,7 @@ def render() -> None:
             title=f"{st.session_state.hedge_ratio:.0%} 套保收入分布",
         )
         fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10})
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     metrics = calculate_risk_metrics(
         incomes,
         budget_income(st.session_state.amount, st.session_state.budget_rate),
@@ -93,7 +93,7 @@ def render() -> None:
     display["Risk Ratio"] = display["Risk Ratio"].map(lambda x: f"{x:.2%}")
     display["风险下降幅度"] = display["风险下降幅度"].map(lambda x: f"{x:.1%}")
     st.subheader("固定比例策略比较")
-    st.dataframe(display, use_container_width=True, hide_index=True)
+    st.dataframe(display, width="stretch", hide_index=True)
     chart = table.copy()
     chart["套保比例"] = chart["套保比例"].map(lambda x: f"{x:.0%}")
     fig = px.bar(
@@ -106,4 +106,4 @@ def render() -> None:
     fig.update_layout(
         height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10}, yaxis_title="CNY"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")

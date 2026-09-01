@@ -15,8 +15,14 @@ def get_fx_data() -> FXData:
 
 
 @st.cache_resource(show_spinner=False)
-def get_model_result(data_end_date: str, frame: pd.DataFrame) -> ModelResult:
-    del data_end_date
+def get_model_result(
+    data_end_date: str,
+    frame: pd.DataFrame,
+    result_schema_version: int,
+) -> ModelResult:
+    # Both values are cache-key inputs. The explicit schema version prevents a
+    # hot deployment from returning an object created by an older dataclass.
+    del data_end_date, result_schema_version
     return fit_models(frame)
 
 

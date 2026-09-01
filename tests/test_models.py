@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from fxlab.config import MODEL_RESULT_SCHEMA_VERSION
 from fxlab.models import build_features, direction_label, select_recent_model_window
 
 
@@ -16,6 +17,7 @@ def test_features_only_use_current_or_past_data(real_frame):
 
 def test_models_compute_real_metrics(fitted_models):
     xgb, garch = fitted_models.xgboost, fitted_models.garch
+    assert fitted_models.schema_version == MODEL_RESULT_SCHEMA_VERSION
     assert xgb.train_size > xgb.test_size > 0
     assert xgb.mae >= 0 and xgb.rmse >= xgb.mae
     assert 0 <= xgb.direction_accuracy <= 1
