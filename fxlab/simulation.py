@@ -66,17 +66,21 @@ def compare_hedge_strategies(
     terminal_rates: np.ndarray,
     amount: float,
     budget_rate: float,
+    spot_rate: float,
     forward_rate: float,
     ratios: tuple[float, ...] = QUICK_RATIOS,
 ) -> pd.DataFrame:
     r_budget = budget_income(amount, budget_rate)
+    spot_reference_income = amount * spot_rate
     baseline = calculate_risk_metrics(
-        hedged_income(amount, 0.0, forward_rate, terminal_rates), r_budget
+        hedged_income(amount, 0.0, forward_rate, terminal_rates),
+        r_budget,
+        spot_reference_income,
     )
     rows: list[dict[str, float | str]] = []
     for ratio in ratios:
         incomes = hedged_income(amount, ratio, forward_rate, terminal_rates)
-        metrics = calculate_risk_metrics(incomes, r_budget)
+        metrics = calculate_risk_metrics(incomes, r_budget, spot_reference_income)
         reduction = (
             (baseline.cfar95 - metrics.cfar95) / baseline.cfar95 if baseline.cfar95 > 0 else 0.0
         )

@@ -39,6 +39,7 @@ def ensure_simulation():
         simulation.terminal_rates,
         float(st.session_state.amount),
         float(st.session_state.budget_rate),
+        float(st.session_state.spot_rate),
         float(st.session_state.forward_rate),
     )
     return simulation

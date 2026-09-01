@@ -7,7 +7,7 @@ from ..reporting import (
     remember_report,
     save_report,
 )
-from ..ui import page_header
+from ..ui import page_header, scenario_summary
 from .common import ensure_simulation
 
 
@@ -20,6 +20,7 @@ def render() -> None:
     simulation = ensure_simulation()
     if simulation is None:
         return
+    scenario_summary(st.session_state)
     table = st.session_state.strategy_table.copy()
     display = table.copy()
     display["套保比例"] = display["套保比例"].map(lambda x: f"{x:.0%}")

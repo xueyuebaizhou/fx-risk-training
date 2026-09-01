@@ -5,7 +5,7 @@ import streamlit as st
 
 from ..config import SIMULATION_PATHS
 from ..risk import budget_income, calculate_risk_metrics, hedged_income
-from ..ui import cny, page_header
+from ..ui import cny, page_header, scenario_summary
 from .common import ensure_simulation
 
 
@@ -18,6 +18,7 @@ def render() -> None:
     simulation = ensure_simulation()
     if simulation is None:
         return
+    scenario_summary(st.session_state)
     st.warning(
         f"以下未来路径均为模型生成的教学情景，不是真实未来行情。完整指标使用全部 {SIMULATION_PATHS:,} 条路径。"
     )
@@ -75,7 +76,9 @@ def render() -> None:
         fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10})
         st.plotly_chart(fig, use_container_width=True)
     metrics = calculate_risk_metrics(
-        incomes, budget_income(st.session_state.amount, st.session_state.budget_rate)
+        incomes,
+        budget_income(st.session_state.amount, st.session_state.budget_rate),
+        st.session_state.amount * st.session_state.spot_rate,
     )
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("平均收入", cny(metrics.mean_income))

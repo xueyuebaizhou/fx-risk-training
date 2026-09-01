@@ -22,12 +22,19 @@ def test_income_formulas():
 
 def test_var_cfar_use_same_income_scenarios():
     incomes = np.array([80, 90, 100, 110, 120], dtype=float)
-    metrics = calculate_risk_metrics(incomes, 100)
+    metrics = calculate_risk_metrics(incomes, 100, 110)
     assert metrics.q05_income == pytest.approx(np.quantile(incomes, 0.05))
-    assert metrics.var95 == pytest.approx(
-        np.quantile(np.maximum(100 - incomes, 0), 0.95)
-    )
+    assert metrics.var95 == pytest.approx(max(np.quantile(110 - incomes, 0.95), 0))
     assert metrics.cfar95 == pytest.approx(max(100 - np.quantile(incomes, 0.05), 0))
+    assert metrics.var95 != metrics.cfar95
+
+
+def test_budget_changes_cfar_but_not_spot_referenced_var():
+    incomes = np.array([80, 90, 100, 110, 120], dtype=float)
+    first = calculate_risk_metrics(incomes, 100, 110)
+    second = calculate_risk_metrics(incomes, 105, 110)
+    assert first.var95 == second.var95
+    assert first.cfar95 != second.cfar95
 
 
 def test_risk_thresholds():
@@ -43,6 +50,7 @@ def test_risk_thresholds():
         (-1, 90, 7.1, 7.2, 7.08, 0.5),
         (1_000_000, 0, 7.1, 7.2, 7.08, 0.5),
         (1_000_000, 90, 0, 7.2, 7.08, 0.5),
+        (1_000_000, 90, 7.1, 7.2, 0.0001, 0.5),
         (1_000_000, 90, 7.1, 7.2, 7.08, 1.1),
     ],
 )

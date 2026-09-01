@@ -84,6 +84,15 @@ def cny(value: float) -> str:
     return f"¥{value:,.2f}"
 
 
+def scenario_summary(state) -> None:
+    st.caption(
+        "统一案例参数｜"
+        f"A=${float(state.amount):,.2f}｜T={int(state.term_days)} 天｜"
+        f"B={float(state.budget_rate):.4f}｜S₀={float(state.spot_rate):.4f}｜"
+        f"F={float(state.forward_rate):.4f}｜h={float(state.hedge_ratio):.0%}"
+    )
+
+
 def risk_badge(level: str) -> None:
     css = {"低风险": "risk-low", "中风险": "risk-mid", "高风险": "risk-high"}.get(
         level, ""
