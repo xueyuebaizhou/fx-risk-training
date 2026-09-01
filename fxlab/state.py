@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable, MutableMapping
+from typing import Any
 
 import streamlit as st
 
@@ -28,24 +30,60 @@ DEFAULTS = {
     "decision_reason": "",
 }
 
+STATE_SCHEMA_VERSION = 2
+SCENARIO_INPUT_KEYS = (
+    "amount",
+    "term_days",
+    "budget_rate",
+    "spot_rate",
+    "forward_rate",
+    "hedge_ratio",
+)
+
+
+def prepare_state(state: MutableMapping[str, Any]) -> None:
+    """Initialise canonical scenario state and repair values from the old widget schema."""
+    for key, value in DEFAULTS.items():
+        state.setdefault(key, value)
+    if int(state.get("state_schema_version", 0) or 0) < STATE_SCHEMA_VERSION:
+        # The previous page-local widget could initialise F from its 0.0001 lower bound.
+        if float(state.get("forward_rate") or 0.0) < 1.0:
+            state["forward_rate"] = DEFAULT_FORWARD_RATE
+        state["state_schema_version"] = STATE_SCHEMA_VERSION
+
+
+def prepare_widget_value(
+    state: MutableMapping[str, Any],
+    widget_key: str,
+    input_key: str,
+    to_widget: Callable[[Any], Any] | None = None,
+) -> None:
+    """Seed a temporary widget key without turning the canonical value into widget state."""
+    if widget_key not in state:
+        value = state[input_key]
+        state[widget_key] = to_widget(value) if to_widget else value
+
+
+def commit_widget_value(
+    state: MutableMapping[str, Any],
+    widget_key: str,
+    input_key: str,
+    from_widget: Callable[[Any], Any] | None = None,
+) -> None:
+    """Copy an edited temporary widget value into canonical cross-page state."""
+    value = state[widget_key]
+    state[input_key] = from_widget(value) if from_widget else value
+
 
 def initialise_state() -> None:
-    for key, value in DEFAULTS.items():
-        st.session_state.setdefault(key, value)
+    prepare_state(st.session_state)
     st.session_state.setdefault("input_fingerprint", input_fingerprint())
 
 
 def input_fingerprint() -> str:
     payload = {
         key: st.session_state.get(key)
-        for key in (
-            "amount",
-            "term_days",
-            "budget_rate",
-            "forward_rate",
-            "hedge_ratio",
-            "spot_rate",
-        )
+        for key in SCENARIO_INPUT_KEYS
     }
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, default=str).encode()

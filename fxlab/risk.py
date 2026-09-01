@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .config import MAX_USDCNY_RATE, MIN_USDCNY_RATE
+
 
 @dataclass(frozen=True)
 class RiskMetrics:
@@ -29,12 +31,18 @@ def validate_inputs(
         errors.append("外币金额 A 必须大于 0。")
     if int(term_days) <= 0:
         errors.append("结算期限 T 必须为正整数。")
-    if budget_rate <= 0:
-        errors.append("预算汇率 B 必须大于 0。")
-    if spot_rate <= 0:
-        errors.append("当前即期汇率 S₀ 必须大于 0。")
-    if forward_rate <= 0:
-        errors.append("远期汇率 F 必须大于 0。")
+    if not MIN_USDCNY_RATE <= budget_rate <= MAX_USDCNY_RATE:
+        errors.append(
+            f"预算汇率 B 必须位于 {MIN_USDCNY_RATE:g} 至 {MAX_USDCNY_RATE:g} CNY/USD。"
+        )
+    if not MIN_USDCNY_RATE <= spot_rate <= MAX_USDCNY_RATE:
+        errors.append(
+            f"当前即期汇率 S₀ 必须位于 {MIN_USDCNY_RATE:g} 至 {MAX_USDCNY_RATE:g} CNY/USD。"
+        )
+    if not MIN_USDCNY_RATE <= forward_rate <= MAX_USDCNY_RATE:
+        errors.append(
+            f"远期汇率 F 必须位于 {MIN_USDCNY_RATE:g} 至 {MAX_USDCNY_RATE:g} CNY/USD。"
+        )
     if not 0 <= hedge_ratio <= 1:
         errors.append("套保比例 h 必须位于 0 至 1 之间。")
     if errors:
@@ -77,16 +85,24 @@ def risk_level(risk_ratio: float) -> str:
     return "高风险"
 
 
-def calculate_risk_metrics(incomes: np.ndarray, r_budget: float) -> RiskMetrics:
+def calculate_risk_metrics(
+    incomes: np.ndarray,
+    r_budget: float,
+    spot_reference_income: float,
+) -> RiskMetrics:
     values = np.asarray(incomes, dtype=float)
     if values.ndim != 1 or values.size == 0 or not np.isfinite(values).all():
         raise ValueError("人民币收入情景必须是一维、非空且全部为有限数值。")
     if r_budget <= 0:
         raise ValueError("预算人民币收入必须大于 0。")
+    if spot_reference_income <= 0 or not np.isfinite(spot_reference_income):
+        raise ValueError("当前即期折算人民币价值必须为正的有限数值。")
 
     q05 = float(np.quantile(values, 0.05))
-    losses = np.maximum(r_budget - values, 0.0)
-    var95 = float(np.quantile(losses, 0.95))
+    # VaR measures the 95th percentile of FX P&L losses relative to today's
+    # spot-converted value; CFaR measures cash-flow shortfall against budget.
+    pnl_losses = spot_reference_income - values
+    var95 = float(max(np.quantile(pnl_losses, 0.95), 0.0))
     cfar95 = float(max(r_budget - q05, 0.0))
     ratio = cfar95 / r_budget
     return RiskMetrics(

@@ -16,7 +16,8 @@ def render() -> None:
         return
     r_budget = budget_income(st.session_state.amount, st.session_state.budget_rate)
     incomes = unhedged_income(st.session_state.amount, simulation.terminal_rates)
-    metrics = calculate_risk_metrics(incomes, r_budget)
+    spot_reference_income = st.session_state.amount * st.session_state.spot_rate
+    metrics = calculate_risk_metrics(incomes, r_budget, spot_reference_income)
     st.markdown(
         "<div class='soft-card'><b>敞口识别：</b>出口企业未来收到 USD，属于美元应收敞口。USD/CNY 下跌时，结汇人民币收入减少。</div>",
         unsafe_allow_html=True,
@@ -34,7 +35,8 @@ def render() -> None:
         text=f"Risk Ratio = CFaR₉₅ / R_budget = {metrics.risk_ratio:.2%}",
     )
     st.markdown(
-        "<div class='formula'>出口收汇相对预算收入偏差 = A × (S_T − B)<br>CFaR₉₅ = max[R_budget − Q₅%(R), 0]</div>",
+        "<div class='formula'>汇率损失 L = A × S₀ − R；VaR₉₅ = max[Q₉₅%(L), 0]"
+        "<br>CFaR₉₅ = max[R_budget − Q₅%(R), 0]（相对预算现金流缺口）</div>",
         unsafe_allow_html=True,
     )
     st.warning(

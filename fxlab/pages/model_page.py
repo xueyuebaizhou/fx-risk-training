@@ -64,7 +64,10 @@ def render() -> None:
     xgb, garch = result.xgboost, result.garch
     state, percentile = _volatility_state(garch)
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("下一交易日预测", f"{xgb.prediction_next_day:.4f}", f"{xgb.direction}")
+    m1.metric("下一交易日预测", f"{xgb.prediction_next_day:.4f}")
+    m1.caption(
+        f"{xgb.direction}｜较当前汇率 {xgb.prediction_next_day - xgb.previous_rate:+.4f}"
+    )
     m2.metric("MAE", f"{xgb.mae:.6f}")
     m3.metric("RMSE", f"{xgb.rmse:.6f}")
     m4.metric("方向准确率 DA", f"{xgb.direction_accuracy:.2%}")
@@ -73,8 +76,15 @@ def render() -> None:
     g2.metric("GARCH 预测年化波动率", f"{garch.annual_volatility:.2%}")
     g3.metric("数据相对波动状态", state, f"历史百分位 {percentile:.1%}")
     st.caption(
-        f"训练样本 {xgb.train_size}，测试样本 {xgb.test_size}；时间顺序划分，不随机打乱。波动状态是相对本数据历史分布的教学标签。"
+        f"全量真实历史保留用于图表；模型统一使用最近窗口 {result.sample_start_date} 至 "
+        f"{result.sample_end_date}（{result.sample_size} 个观测）。XGBoost 训练样本 "
+        f"{xgb.train_size}、测试样本 {xgb.test_size}，按时间顺序划分；GARCH 使用同一窗口。"
     )
+    if garch.annual_volatility >= 1.0:
+        st.error(
+            "GARCH 预测年化波动率达到或超过 100%。该值由当前建模窗口真实样本估计，"
+            "请结合样本范围、异常行情与模型适用性复核后再用于教学结论。"
+        )
     c1, c2 = st.columns(2)
     with c1:
         pred = pd.DataFrame(

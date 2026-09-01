@@ -8,7 +8,7 @@ from arch import arch_model
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from xgboost import XGBRegressor
 
-from .config import MIN_GARCH_ROWS, MIN_MODEL_ROWS, TRADING_DAYS
+from .config import MIN_GARCH_ROWS, MIN_MODEL_ROWS, MODEL_LOOKBACK_YEARS, TRADING_DAYS
 
 FEATURE_LABELS = {
     "rate": "当前汇率",
@@ -20,6 +20,13 @@ FEATURE_LABELS = {
     "ma_20": "20日移动平均",
     "ma_ratio": "短长均线比",
 }
+
+# The longest rolling feature needs 20 observations, and the next-day target
+# removes the final row. Keep enough raw observations to leave MIN_MODEL_ROWS
+# complete feature rows after both losses.
+FEATURE_WARMUP_ROWS = 20
+TARGET_HORIZON_ROWS = 1
+MIN_MODEL_RAW_ROWS = MIN_MODEL_ROWS + FEATURE_WARMUP_ROWS + TARGET_HORIZON_ROWS
 
 
 @dataclass(frozen=True)
@@ -51,6 +58,33 @@ class GARCHResult:
 class ModelResult:
     xgboost: XGBoostResult
     garch: GARCHResult
+    sample_start_date: str
+    sample_end_date: str
+    sample_size: int
+
+
+def direction_label(prediction: float, current_rate: float) -> str:
+    if prediction > current_rate:
+        return "↑ 上涨"
+    if prediction < current_rate:
+        return "↓ 下跌"
+    return "→ 持平"
+
+
+def select_recent_model_window(frame: pd.DataFrame) -> pd.DataFrame:
+    """Keep historical charts intact while fitting on the latest five calendar years."""
+    ordered = frame.sort_values("date").reset_index(drop=True)
+    if len(ordered) < MIN_MODEL_RAW_ROWS:
+        raise ValueError(
+            f"有效样本仅 {len(ordered)} 行；至少需要 {MIN_MODEL_RAW_ROWS} 行原始数据，"
+            f"才能生成 {MIN_MODEL_ROWS} 行完整特征。"
+        )
+    end_date = pd.Timestamp(ordered["date"].iloc[-1])
+    cutoff = end_date - pd.DateOffset(years=MODEL_LOOKBACK_YEARS)
+    recent = ordered.loc[ordered["date"] >= cutoff].copy()
+    if len(recent) < MIN_MODEL_RAW_ROWS:
+        recent = ordered.tail(MIN_MODEL_RAW_ROWS).copy()
+    return recent.reset_index(drop=True)
 
 
 def build_features(frame: pd.DataFrame) -> pd.DataFrame:
@@ -107,11 +141,7 @@ def fit_xgboost(frame: pd.DataFrame) -> XGBoostResult:
     return XGBoostResult(
         prediction_next_day=next_prediction,
         previous_rate=latest_rate,
-        direction="上涨"
-        if next_prediction > latest_rate
-        else "下跌"
-        if next_prediction < latest_rate
-        else "持平",
+        direction=direction_label(next_prediction, latest_rate),
         mae=float(mean_absolute_error(actual, predicted)),
         rmse=float(mean_squared_error(actual, predicted) ** 0.5),
         direction_accuracy=direction_accuracy,
@@ -166,4 +196,11 @@ def fit_garch(frame: pd.DataFrame) -> GARCHResult:
 
 
 def fit_models(frame: pd.DataFrame) -> ModelResult:
-    return ModelResult(xgboost=fit_xgboost(frame), garch=fit_garch(frame))
+    window = select_recent_model_window(frame)
+    return ModelResult(
+        xgboost=fit_xgboost(window),
+        garch=fit_garch(window),
+        sample_start_date=pd.Timestamp(window["date"].iloc[0]).strftime("%Y-%m-%d"),
+        sample_end_date=pd.Timestamp(window["date"].iloc[-1]).strftime("%Y-%m-%d"),
+        sample_size=len(window),
+    )

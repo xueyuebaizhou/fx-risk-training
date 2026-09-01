@@ -57,7 +57,11 @@ def _report_payload(state: dict) -> dict:
     incomes = hedged_income(
         state["amount"], ratio, state["forward_rate"], simulation.terminal_rates
     )
-    metrics = calculate_risk_metrics(incomes, budget_income(state["amount"], state["budget_rate"]))
+    metrics = calculate_risk_metrics(
+        incomes,
+        budget_income(state["amount"], state["budget_rate"]),
+        state["amount"] * state["spot_rate"],
+    )
     return {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "data": data,
@@ -84,8 +88,8 @@ def build_html_report(state: dict) -> str:
 <style>body{{font-family:-apple-system,BlinkMacSystemFont,"Microsoft YaHei",sans-serif;color:#24384b;max-width:980px;margin:40px auto;line-height:1.7}}h1,h2{{color:#17324d}}.meta{{color:#66788a}}table{{border-collapse:collapse;width:100%;font-size:13px}}th,td{{border:1px solid #dce6ef;padding:7px;text-align:right}}th{{background:#eef5fb}}.note{{background:#f3f7fa;padding:12px;border-left:4px solid #3278b5}}@media print{{body{{margin:18mm}}}}</style></head><body>
 <h1>{escape(APP_TITLE)}：实验报告</h1><p class="meta">生成时间：{p["generated_at"]}</p>
 <h2>一、案例信息</h2><p>出口收汇；USD 应收金额 {p["amount"]:,.2f}；结算期限 {p["term_days"]} 个自然日；当前即期汇率 S₀={p["spot_rate"]:.4f}；预算汇率 B={p["budget_rate"]:.4f}；教学案例远期报价 F={p["forward_rate"]:.4f}，单位均为 CNY/USD。</p>
-<h2>二、真实数据与 AI 模型</h2><p>来源：{escape(p["data"].source)}。样本范围：{p["data"].start_date} 至 {p["data"].end_date}；读取时间：{escape(p["data"].retrieved_at)}；模式：{escape(p["data"].mode)}。</p><p>XGBoost 下一交易日预测={xgb.prediction_next_day:.4f}，MAE={xgb.mae:.6f}，RMSE={xgb.rmse:.6f}，方向准确率={xgb.direction_accuracy:.2%}。GARCH 预测日波动率={garch.daily_volatility:.4%}，年化波动率={garch.annual_volatility:.2%}。</p>
-<h2>三、风险敞口与策略比较</h2><p>企业持有美元应收敞口，USD/CNY 下跌会使结汇人民币收入减少。全部指标由同一批 {SIMULATION_PATHS:,} 条模型教学情景计算。</p>{table_html}
+<h2>二、真实数据与 AI 模型</h2><p>来源：{escape(p["data"].source)}。全量历史范围：{p["data"].start_date} 至 {p["data"].end_date}；读取时间：{escape(p["data"].retrieved_at)}；模式：{escape(p["data"].mode)}。XGBoost 与 GARCH 统一建模窗口：{p["models"].sample_start_date} 至 {p["models"].sample_end_date}，共 {p["models"].sample_size} 个观测。</p><p>XGBoost 下一交易日预测={xgb.prediction_next_day:.4f}（{xgb.direction}），MAE={xgb.mae:.6f}，RMSE={xgb.rmse:.6f}，方向准确率={xgb.direction_accuracy:.2%}。GARCH 预测日波动率={garch.daily_volatility:.4%}，年化波动率={garch.annual_volatility:.2%}。</p>
+<h2>三、风险敞口与策略比较</h2><p>企业持有美元应收敞口，USD/CNY 下跌会使结汇人民币收入减少。VaR 基于相对当前即期折算价值的汇率损失分布；CFaR 基于相对预算收入的现金流缺口。全部指标由同一批 {SIMULATION_PATHS:,} 条模型教学情景计算。</p>{table_html}
 <h2>四、学生决策与评价</h2><p>最终选择：{p["ratio"]:.0%} 远期套保。理由：{escape(p["reason"])}</p><p>该策略平均收入 ¥{p["metrics"].mean_income:,.2f}，5%分位数收入 ¥{p["metrics"].q05_income:,.2f}，VaR₉₅ ¥{p["metrics"].var95:,.2f}，CFaR₉₅ ¥{p["metrics"].cfar95:,.2f}，Risk Ratio={p["metrics"].risk_ratio:.2%}，预警为“{p["metrics"].risk_level}”。</p>
 <p class="note">说明：蒙特卡洛结果是模型生成的教学情景，不是真实未来行情；F 为教学案例远期报价，不是实时银行报价；风险阈值是系统内部教学规则，不代表监管、银行或其他金融机构的统一标准。</p>
 </body></html>"""
@@ -146,15 +150,21 @@ def build_pdf_report(state: dict) -> bytes:
     story += [
         Paragraph("二、真实数据与 AI 模型", heading),
         Paragraph(
-            f"数据来源：{p['data'].source}。样本范围 {p['data'].start_date} 至 {p['data'].end_date}；读取时间 {p['data'].retrieved_at}；模式 {p['data'].mode}。",
+            f"数据来源：{p['data'].source}。全量历史范围 {p['data'].start_date} 至 {p['data'].end_date}；读取时间 {p['data'].retrieved_at}；模式 {p['data'].mode}。模型统一使用 {p['models'].sample_start_date} 至 {p['models'].sample_end_date} 的最近窗口，共 {p['models'].sample_size} 个观测。",
             body,
         ),
         Paragraph(
-            f"XGBoost：下一交易日预测 {xgb.prediction_next_day:.4f}，MAE {xgb.mae:.6f}，RMSE {xgb.rmse:.6f}，方向准确率 {xgb.direction_accuracy:.2%}。GARCH：日波动率 {garch.daily_volatility:.4%}，年化波动率 {garch.annual_volatility:.2%}。",
+            f"XGBoost：下一交易日预测 {xgb.prediction_next_day:.4f}（{xgb.direction}），MAE {xgb.mae:.6f}，RMSE {xgb.rmse:.6f}，方向准确率 {xgb.direction_accuracy:.2%}。GARCH：日波动率 {garch.daily_volatility:.4%}，年化波动率 {garch.annual_volatility:.2%}。",
             body,
         ),
     ]
-    story.append(Paragraph("三、策略比较（同一批 10,000 条教学情景）", heading))
+    story += [
+        Paragraph("三、策略比较（同一批 10,000 条教学情景）", heading),
+        Paragraph(
+            "VaR 基于相对当前即期折算价值的汇率损失分布；CFaR 基于相对预算收入的现金流缺口。",
+            body,
+        ),
+    ]
     columns = [
         "套保比例",
         "平均收入",

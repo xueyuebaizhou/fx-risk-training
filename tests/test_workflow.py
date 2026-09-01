@@ -35,10 +35,18 @@ def test_strategy_table_uses_one_terminal_sample(fitted_models, real_frame):
         fitted_models.garch.daily_drift,
         fitted_models.garch.daily_volatility,
     )
-    table = compare_hedge_strategies(sim.terminal_rates, 1_000_000, 7.10, 7.08)
+    table = compare_hedge_strategies(
+        sim.terminal_rates,
+        1_000_000,
+        7.10,
+        float(real_frame["rate"].iloc[-1]),
+        7.08,
+    )
     assert table["套保比例"].tolist() == [0, 0.25, 0.5, 0.75, 1]
     assert table["收入标准差"].is_monotonic_decreasing
     assert table.iloc[-1]["收入标准差"] < 1e-6
+    assert table.iloc[-1]["平均收入"] == 7_080_000
+    assert (table["VaR95"] != table["CFaR95"]).any()
 
 
 def test_log_return_drift_is_used_without_half_variance_adjustment():

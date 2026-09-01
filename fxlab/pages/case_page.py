@@ -1,8 +1,17 @@
 import streamlit as st
 
+from ..config import MAX_USDCNY_RATE, MIN_USDCNY_RATE
 from ..risk import budget_income
-from ..state import invalidate_if_inputs_changed
+from ..state import (
+    commit_widget_value,
+    invalidate_if_inputs_changed,
+    prepare_widget_value,
+)
 from ..ui import cny, data_note, page_header
+
+
+def _commit_input(widget_key: str, input_key: str) -> None:
+    commit_widget_value(st.session_state, widget_key, input_key)
 
 
 def render() -> None:
@@ -17,6 +26,9 @@ def render() -> None:
         <p style="margin-top:.9rem">企业向美国客户出口产品，未来收到美元货款。由于最终以人民币核算，USD/CNY 下跌会使同额美元兑换的人民币减少。</p></div>""",
         unsafe_allow_html=True,
     )
+    prepare_widget_value(st.session_state, "_amount_input", "amount")
+    prepare_widget_value(st.session_state, "_term_days_input", "term_days")
+    prepare_widget_value(st.session_state, "_budget_rate_input", "budget_rate")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.number_input(
@@ -24,19 +36,30 @@ def render() -> None:
             min_value=1.0,
             step=50_000.0,
             format="%.2f",
-            key="amount",
+            key="_amount_input",
+            on_change=_commit_input,
+            args=("_amount_input", "amount"),
         )
     with col2:
         st.number_input(
-            "结算期限 T（自然日）", min_value=1, max_value=730, step=1, key="term_days"
+            "结算期限 T（自然日）",
+            min_value=1,
+            max_value=730,
+            step=1,
+            key="_term_days_input",
+            on_change=_commit_input,
+            args=("_term_days_input", "term_days"),
         )
     with col3:
         st.number_input(
             "预算汇率 B（CNY/USD）",
-            min_value=0.0001,
+            min_value=MIN_USDCNY_RATE,
+            max_value=MAX_USDCNY_RATE,
             step=0.01,
             format="%.4f",
-            key="budget_rate",
+            key="_budget_rate_input",
+            on_change=_commit_input,
+            args=("_budget_rate_input", "budget_rate"),
         )
     invalidate_if_inputs_changed()
     m1, m2, m3, m4 = st.columns(4)
