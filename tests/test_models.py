@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from fxlab.models import build_features, direction_label, select_recent_model_window
 
@@ -38,3 +39,29 @@ def test_models_use_recent_window_while_history_can_remain_full(real_frame):
     end = pd.Timestamp(window["date"].max())
     assert pd.Timestamp(window["date"].min()) >= end - pd.DateOffset(years=5)
     assert pd.Timestamp(extended["date"].min()).year == 1981
+
+
+def test_model_window_rejects_280_raw_rows_before_feature_building():
+    frame = pd.DataFrame(
+        {
+            "date": pd.date_range("2025-01-01", periods=280, freq="B"),
+            "rate": np.linspace(7.0, 7.2, 280),
+        }
+    )
+
+    with pytest.raises(ValueError, match="至少需要 281 行原始数据"):
+        select_recent_model_window(frame)
+
+
+def test_model_window_keeps_281_raw_rows_for_260_complete_features():
+    frame = pd.DataFrame(
+        {
+            "date": pd.date_range("2025-01-01", periods=281, freq="B"),
+            "rate": np.linspace(7.0, 7.2, 281),
+        }
+    )
+
+    window = select_recent_model_window(frame)
+
+    assert len(window) == 281
+    assert len(build_features(window)) == 260

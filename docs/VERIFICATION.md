@@ -5,7 +5,7 @@
 ## 自动化结果
 
 - `ruff check .`：通过
-- `pytest -q`：20 项全部通过
+- `pytest -q`：22 项全部通过
 - Python 语法编译：通过
 - Streamlit `AppTest` 启动：0 个异常
 - PDF/HTML 实际生成：通过，PDF 文件头为 `%PDF-`

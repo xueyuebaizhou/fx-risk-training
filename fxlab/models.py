@@ -21,6 +21,13 @@ FEATURE_LABELS = {
     "ma_ratio": "短长均线比",
 }
 
+# The longest rolling feature needs 20 observations, and the next-day target
+# removes the final row. Keep enough raw observations to leave MIN_MODEL_ROWS
+# complete feature rows after both losses.
+FEATURE_WARMUP_ROWS = 20
+TARGET_HORIZON_ROWS = 1
+MIN_MODEL_RAW_ROWS = MIN_MODEL_ROWS + FEATURE_WARMUP_ROWS + TARGET_HORIZON_ROWS
+
 
 @dataclass(frozen=True)
 class XGBoostResult:
@@ -67,13 +74,16 @@ def direction_label(prediction: float, current_rate: float) -> str:
 def select_recent_model_window(frame: pd.DataFrame) -> pd.DataFrame:
     """Keep historical charts intact while fitting on the latest five calendar years."""
     ordered = frame.sort_values("date").reset_index(drop=True)
-    if len(ordered) < MIN_MODEL_ROWS:
-        raise ValueError(f"有效样本仅 {len(ordered)} 行，少于建模最低要求。")
+    if len(ordered) < MIN_MODEL_RAW_ROWS:
+        raise ValueError(
+            f"有效样本仅 {len(ordered)} 行；至少需要 {MIN_MODEL_RAW_ROWS} 行原始数据，"
+            f"才能生成 {MIN_MODEL_ROWS} 行完整特征。"
+        )
     end_date = pd.Timestamp(ordered["date"].iloc[-1])
     cutoff = end_date - pd.DateOffset(years=MODEL_LOOKBACK_YEARS)
     recent = ordered.loc[ordered["date"] >= cutoff].copy()
-    if len(recent) < MIN_MODEL_ROWS:
-        recent = ordered.tail(MIN_MODEL_ROWS).copy()
+    if len(recent) < MIN_MODEL_RAW_ROWS:
+        recent = ordered.tail(MIN_MODEL_RAW_ROWS).copy()
     return recent.reset_index(drop=True)
 
 
