@@ -10,6 +10,21 @@ from ..state import clear_derived_results, model_result_is_current
 from ..ui import data_note, page_header, render_chart, section_label
 
 
+def _history_line_chart(
+    frame: pd.DataFrame,
+    y: str,
+    labels: dict[str, str],
+) -> go.Figure:
+    """Let Plotly choose SVG or WebGL from the visible history size."""
+    return px.line(
+        frame,
+        x="date",
+        y=y,
+        labels=labels,
+        render_mode="auto",
+    )
+
+
 def _volatility_state(result) -> tuple[str, float]:
     history = np.asarray(result.conditional_volatility)
     percentile = float(np.mean(history <= result.daily_volatility))
@@ -34,35 +49,29 @@ def render() -> None:
     section_label("历史行情概览", "全量真实数据仅用于回溯与可视化")
     tabs = st.tabs(["历史汇率", "日对数收益率", "20日滚动年化波动率"])
     with tabs[0]:
-        fig = px.line(
+        fig = _history_line_chart(
             frame,
-            x="date",
-            y="rate",
-            labels={"date": "日期", "rate": "USD/CNY"},
-            render_mode="svg",
+            "rate",
+            {"date": "日期", "rate": "USD/CNY"},
         )
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
         render_chart(fig)
     with tabs[1]:
         returns = frame.dropna(subset=["log_return"]).copy()
         returns["收益率（%）"] = returns["log_return"] * 100
-        fig = px.line(
+        fig = _history_line_chart(
             returns,
-            x="date",
-            y="收益率（%）",
-            labels={"date": "日期"},
-            render_mode="svg",
+            "收益率（%）",
+            {"date": "日期"},
         )
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
         render_chart(fig)
     with tabs[2]:
         vol = frame.dropna(subset=["rolling_vol_20"])
-        fig = px.line(
+        fig = _history_line_chart(
             vol,
-            x="date",
-            y="rolling_vol_20",
-            labels={"date": "日期", "rolling_vol_20": "年化波动率"},
-            render_mode="svg",
+            "rolling_vol_20",
+            {"date": "日期", "rolling_vol_20": "年化波动率"},
         )
         fig.update_yaxes(tickformat=".1%")
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})

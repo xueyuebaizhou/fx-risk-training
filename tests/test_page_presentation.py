@@ -3,13 +3,23 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import pytest
 import streamlit as st
 
-from fxlab.pages.model_page import _volatility_state
-from fxlab.pages.simulation_page import _distribution_charts
-from fxlab.ui import GRID, INK, PRIMARY, cny, inject_styles, risk_badge, style_chart
+from fxlab.pages.model_page import _history_line_chart, _volatility_state
+from fxlab.pages.simulation_page import DISPLAY_PATHS, _distribution_charts, _path_scenario_chart
+from fxlab.ui import (
+    CHART_PALETTE,
+    GRID,
+    INK,
+    PRIMARY,
+    cny,
+    inject_styles,
+    risk_badge,
+    style_chart,
+)
 
 
 @pytest.mark.parametrize(
@@ -106,6 +116,37 @@ def test_chart_theme_styles_only_real_titles():
 
     assert styled.layout.title.text == "真实标题"
     assert styled.layout.title.font.color == INK
+
+
+def test_chart_theme_also_styles_webgl_history_lines():
+    figure = style_chart(go.Figure(data=[go.Scattergl(x=[1, 2], y=[3, 4])]))
+
+    assert figure.data[0].line.color == PRIMARY
+    assert figure.data[0].line.width == pytest.approx(1.8)
+
+
+def test_history_chart_uses_webgl_only_for_long_series():
+    short = pd.DataFrame({"date": pd.date_range("2026-01-01", periods=20), "rate": 6.8})
+    long = pd.DataFrame({"date": pd.date_range("2020-01-01", periods=1_500), "rate": 6.8})
+
+    short_chart = _history_line_chart(short, "rate", {"date": "日期"})
+    long_chart = _history_line_chart(long, "rate", {"date": "日期"})
+
+    assert short_chart.data[0].type == "scatter"
+    assert long_chart.data[0].type == "scattergl"
+
+
+def test_path_scenario_chart_uses_full_product_palette():
+    paths = np.tile(np.linspace(6.7, 6.9, 12), (DISPLAY_PATHS, 1))
+
+    figure = _path_scenario_chart(paths, 6.8)
+
+    assert len(figure.data) == DISPLAY_PATHS
+    assert {trace.line.color for trace in figure.data} == set(CHART_PALETTE)
+    assert all(trace.opacity == pytest.approx(0.24) for trace in figure.data)
+    assert all(trace.showlegend is False for trace in figure.data)
+    assert f"{DISPLAY_PATHS} 条路径" in figure.layout.title.text
+    assert "10,000 条" in figure.layout.title.text
 
 
 def test_sidebar_navigation_keeps_radio_inputs_accessible(monkeypatch):
