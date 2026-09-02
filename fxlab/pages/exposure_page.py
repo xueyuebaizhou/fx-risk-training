@@ -25,7 +25,10 @@ def render() -> None:
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("预算人民币收入", cny(r_budget))
     m2.metric(
-        "未套保平均收入", cny(metrics.mean_income), cny(metrics.mean_income - r_budget)
+        "未套保平均收入",
+        cny(metrics.mean_income),
+        cny(metrics.mean_income - r_budget),
+        delta_color="normal",
     )
     m3.metric("95% VaR", cny(metrics.var95))
     m4.metric("95% CFaR", cny(metrics.cfar95))

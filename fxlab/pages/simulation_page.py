@@ -9,6 +9,77 @@ from ..ui import cny, page_header, scenario_summary
 from .common import ensure_simulation
 
 
+def _distribution_charts(
+    terminal_rates: np.ndarray,
+    incomes: np.ndarray,
+    hedge_ratio: float,
+) -> tuple[go.Figure, go.Figure]:
+    terminal_values = np.asarray(terminal_rates, dtype=float)
+    income_values = np.asarray(incomes, dtype=float) / 10_000
+    terminal_mean = float(np.mean(terminal_values))
+    income_mean = float(np.mean(income_values))
+    income_q05 = float(np.quantile(income_values, 0.05))
+
+    rate_fig = px.histogram(
+        x=terminal_values,
+        nbins=60,
+        labels={"x": "到期 USD/CNY"},
+        title="到期汇率分布",
+    )
+    rate_fig.add_vline(
+        x=terminal_mean,
+        line_dash="dash",
+        line_color="#e07a1f",
+        line_width=2,
+        annotation_text=f"均值 {terminal_mean:.4f}",
+        annotation_position="top right",
+    )
+    rate_fig.update_yaxes(title_text="模拟次数")
+    rate_fig.update_layout(
+        height=350,
+        margin={"l": 10, "r": 10, "t": 45, "b": 10},
+    )
+
+    income_fig = px.histogram(
+        x=income_values,
+        nbins=60,
+        labels={"x": "人民币收入（万元）"},
+        title=f"{hedge_ratio:.0%} 套保收入分布",
+    )
+    if np.isclose(income_mean, income_q05):
+        income_fig.add_vline(
+            x=income_mean,
+            line_dash="dash",
+            line_color="#c33c36",
+            line_width=2,
+            annotation_text=f"均值 = 5%分位 {income_mean:.2f} 万元",
+            annotation_position="top right",
+        )
+    else:
+        income_fig.add_vline(
+            x=income_mean,
+            line_dash="dash",
+            line_color="#e07a1f",
+            line_width=2,
+            annotation_text=f"均值 {income_mean:.2f} 万元",
+            annotation_position="top right",
+        )
+        income_fig.add_vline(
+            x=income_q05,
+            line_dash="dash",
+            line_color="#c33c36",
+            line_width=2,
+            annotation_text=f"5%分位 {income_q05:.2f} 万元",
+            annotation_position="top left",
+        )
+    income_fig.update_yaxes(title_text="模拟次数")
+    income_fig.update_layout(
+        height=350,
+        margin={"l": 10, "r": 10, "t": 45, "b": 10},
+    )
+    return rate_fig, income_fig
+
+
 def render() -> None:
     page_header(
         "STEP 05 / MONTE CARLO",
@@ -27,9 +98,7 @@ def render() -> None:
     )
     display_count = 80
     selected = simulation.paths[:display_count]
-    with_start = np.column_stack(
-        [np.full(display_count, st.session_state.spot_rate), selected]
-    )
+    with_start = np.column_stack([np.full(display_count, st.session_state.spot_rate), selected])
     fig = go.Figure()
     for path in with_start:
         fig.add_trace(
@@ -50,36 +119,27 @@ def render() -> None:
         margin={"l": 10, "r": 10, "t": 45, "b": 10},
     )
     st.plotly_chart(fig, width="stretch")
-    c1, c2 = st.columns(2)
-    with c1:
-        fig = px.histogram(
-            x=simulation.terminal_rates,
-            nbins=60,
-            labels={"x": "到期 USD/CNY", "count": "情景数"},
-            title="到期汇率分布",
-        )
-        fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10})
-        st.plotly_chart(fig, width="stretch")
-    with c2:
-        incomes = hedged_income(
-            st.session_state.amount,
-            st.session_state.hedge_ratio,
-            st.session_state.forward_rate,
-            simulation.terminal_rates,
-        )
-        fig = px.histogram(
-            x=incomes / 10000,
-            nbins=60,
-            labels={"x": "人民币收入（万元）", "count": "情景数"},
-            title=f"{st.session_state.hedge_ratio:.0%} 套保收入分布",
-        )
-        fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10})
-        st.plotly_chart(fig, width="stretch")
+    incomes = hedged_income(
+        st.session_state.amount,
+        st.session_state.hedge_ratio,
+        st.session_state.forward_rate,
+        simulation.terminal_rates,
+    )
     metrics = calculate_risk_metrics(
         incomes,
         budget_income(st.session_state.amount, st.session_state.budget_rate),
         st.session_state.amount * st.session_state.spot_rate,
     )
+    rate_fig, income_fig = _distribution_charts(
+        simulation.terminal_rates,
+        incomes,
+        st.session_state.hedge_ratio,
+    )
+    c1, c2 = st.columns(2)
+    with c1:
+        st.plotly_chart(rate_fig, width="stretch")
+    with c2:
+        st.plotly_chart(income_fig, width="stretch")
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("平均收入", cny(metrics.mean_income))
     m2.metric("5%分位数收入", cny(metrics.q05_income))
@@ -103,7 +163,5 @@ def render() -> None:
         barmode="group",
         title="尾部风险与收入波动比较",
     )
-    fig.update_layout(
-        height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10}, yaxis_title="CNY"
-    )
+    fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10}, yaxis_title="CNY")
     st.plotly_chart(fig, width="stretch")
