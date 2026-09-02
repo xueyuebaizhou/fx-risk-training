@@ -561,24 +561,31 @@ def risk_badge(level: str) -> None:
 
 def style_chart(fig):
     """Apply the shared institutional chart theme without changing chart data."""
-    fig.update_layout(
-        paper_bgcolor="#FFFFFF",
-        plot_bgcolor="#FFFFFF",
-        colorway=list(CHART_PALETTE),
-        font={
+    layout_updates = {
+        "paper_bgcolor": "#FFFFFF",
+        "plot_bgcolor": "#FFFFFF",
+        "colorway": list(CHART_PALETTE),
+        "font": {
             "family": 'Inter, Aptos, "Segoe UI", "Microsoft YaHei", sans-serif',
             "color": INK,
             "size": 12,
         },
-        title={"font": {"color": INK, "size": 15}, "x": 0.025, "xanchor": "left"},
-        legend={
+        "legend": {
             "bgcolor": "rgba(255,255,255,.84)",
             "bordercolor": GRID,
             "borderwidth": 1,
             "font": {"color": MUTED, "size": 11},
         },
-        hoverlabel={"bgcolor": INK, "font": {"color": "#FFFFFF", "size": 12}},
-    )
+        "hoverlabel": {"bgcolor": INK, "font": {"color": "#FFFFFF", "size": 12}},
+    }
+    if fig.layout.title.text:
+        layout_updates["title"] = {
+            "text": fig.layout.title.text,
+            "font": {"color": INK, "size": 15},
+            "x": 0.025,
+            "xanchor": "left",
+        }
+    fig.update_layout(**layout_updates)
     fig.update_xaxes(
         showgrid=False,
         showline=True,
