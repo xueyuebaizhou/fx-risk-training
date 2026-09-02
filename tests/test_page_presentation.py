@@ -1,12 +1,13 @@
 from types import SimpleNamespace
 
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 import streamlit as st
 
 from fxlab.pages.model_page import _volatility_state
 from fxlab.pages.simulation_page import _distribution_charts
-from fxlab.ui import cny, risk_badge
+from fxlab.ui import GRID, INK, PRIMARY, cny, risk_badge, style_chart
 
 
 @pytest.mark.parametrize(
@@ -81,3 +82,14 @@ def test_fixed_income_distribution_merges_identical_reference_lines():
 
     assert len(income_fig.layout.shapes) == 1
     assert income_fig.layout.annotations[0].text == "均值 = 5%分位 708.00 万元"
+
+
+def test_chart_theme_changes_presentation_without_changing_data():
+    figure = style_chart(go.Figure(data=[go.Scatter(x=[1, 2], y=[3, 4])]))
+
+    assert list(figure.data[0].x) == [1, 2]
+    assert list(figure.data[0].y) == [3, 4]
+    assert figure.data[0].line.color == PRIMARY
+    assert figure.layout.font.color == INK
+    assert figure.layout.yaxis.gridcolor == GRID
+    assert figure.layout.paper_bgcolor == "#FFFFFF"

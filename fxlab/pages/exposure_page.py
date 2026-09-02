@@ -1,7 +1,7 @@
 import streamlit as st
 
 from ..risk import budget_income, calculate_risk_metrics, unhedged_income
-from ..ui import cny, page_header, risk_badge
+from ..ui import cny, page_header, risk_badge, section_label
 from .common import ensure_simulation
 
 
@@ -22,6 +22,7 @@ def render() -> None:
         "<div class='soft-card'><b>敞口识别：</b>出口企业未来收到 USD，属于美元应收敞口。USD/CNY 下跌时，结汇人民币收入减少。</div>",
         unsafe_allow_html=True,
     )
+    section_label("核心风险指标", "未套保收入情景 · 95% 置信水平")
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("预算人民币收入", cny(r_budget))
     m2.metric(

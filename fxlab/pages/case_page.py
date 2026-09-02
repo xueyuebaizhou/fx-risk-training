@@ -7,7 +7,7 @@ from ..state import (
     invalidate_if_inputs_changed,
     prepare_widget_value,
 )
-from ..ui import cny, data_note, page_header
+from ..ui import cny, data_note, page_header, section_label
 
 
 def _commit_input(widget_key: str, input_key: str) -> None:
@@ -26,6 +26,7 @@ def render() -> None:
         <p style="margin-top:.9rem">企业向美国客户出口产品，未来收到美元货款。由于最终以人民币核算，USD/CNY 下跌会使同额美元兑换的人民币减少。</p></div>""",
         unsafe_allow_html=True,
     )
+    section_label("案例参数", "所有参数在六个模块中保持同步")
     prepare_widget_value(st.session_state, "_amount_input", "amount")
     prepare_widget_value(st.session_state, "_term_days_input", "term_days")
     prepare_widget_value(st.session_state, "_budget_rate_input", "budget_rate")
@@ -71,7 +72,14 @@ def render() -> None:
         cny(budget_income(st.session_state.amount, st.session_state.budget_rate)),
     )
     data_note(st.session_state.fx_data)
-    st.subheader("本次实训任务")
+    section_label("本次实训任务", "从真实行情到策略报告的完整工作流")
     st.markdown(
-        "1. 读取真实 USD/CNY 数据并运行 AI 模型；2. 识别美元应收风险并形成预警；3. 比较远期套保比例；4. 完成 10,000 次情景计算；5. 提交策略选择和实验报告。"
+        """<div class="task-list">
+        <div class="task-item"><span class="task-number">01 / DATA</span>读取真实 USD/CNY 历史行情</div>
+        <div class="task-item"><span class="task-number">02 / MODEL</span>运行 GARCH 与 XGBoost 模型</div>
+        <div class="task-item"><span class="task-number">03 / RISK</span>识别美元应收风险并形成预警</div>
+        <div class="task-item"><span class="task-number">04 / HEDGE</span>完成 10,000 次情景计算并比较套保比例</div>
+        <div class="task-item"><span class="task-number">05 / REPORT</span>提交策略选择和实验报告</div>
+        </div>""",
+        unsafe_allow_html=True,
     )

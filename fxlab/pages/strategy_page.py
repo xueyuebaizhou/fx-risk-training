@@ -5,7 +5,7 @@ import streamlit as st
 from ..config import MAX_USDCNY_RATE, MIN_USDCNY_RATE
 from ..risk import budget_income, calculate_risk_metrics, hedge_effect, hedged_income
 from ..state import commit_widget_value, invalidate_if_inputs_changed, prepare_widget_value
-from ..ui import cny, page_header, scenario_summary
+from ..ui import cny, page_header, scenario_summary, section_label
 from .common import ensure_simulation
 
 
@@ -44,6 +44,7 @@ def render() -> None:
         "hedge_ratio",
         lambda value: round(float(value) * 100),
     )
+    section_label("策略参数", "调整远期报价与连续套保比例")
     c1, c2 = st.columns([1, 1.35])
     with c1:
         st.number_input(
@@ -80,6 +81,7 @@ def render() -> None:
     simulation = ensure_simulation()
     if simulation is None:
         return
+    section_label("策略结果", "同一组情景下与完全不套保基准比较")
     h = st.session_state.hedge_ratio
     incomes = hedged_income(
         st.session_state.amount,
