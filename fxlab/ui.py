@@ -77,11 +77,13 @@ def data_note(data) -> None:
 
 
 def cny(value: float) -> str:
-    if abs(value) >= 100_000_000:
-        return f"¥{value / 100_000_000:,.2f} 亿"
-    if abs(value) >= 10_000:
-        return f"¥{value / 10_000:,.2f} 万"
-    return f"¥{value:,.2f}"
+    sign = "-" if value < 0 else ""
+    magnitude = abs(value)
+    if magnitude >= 100_000_000:
+        return f"{sign}¥{magnitude / 100_000_000:,.2f} 亿"
+    if magnitude >= 10_000:
+        return f"{sign}¥{magnitude / 10_000:,.2f} 万"
+    return f"{sign}¥{magnitude:,.2f}"
 
 
 def scenario_summary(state) -> None:
@@ -94,10 +96,8 @@ def scenario_summary(state) -> None:
 
 
 def risk_badge(level: str) -> None:
-    css = {"低风险": "risk-low", "中风险": "risk-mid", "高风险": "risk-high"}.get(
-        level, ""
-    )
+    css = {"低风险": "risk-low", "中风险": "risk-mid", "高风险": "risk-high"}.get(level, "")
     st.markdown(
-        f'预警结果：<span class="{css}">{html.escape(level)}</span>',
+        f'企业敞口风险：<span class="{css}">{html.escape(level)}</span>',
         unsafe_allow_html=True,
     )

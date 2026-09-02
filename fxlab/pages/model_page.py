@@ -14,10 +14,10 @@ def _volatility_state(result) -> tuple[str, float]:
     history = np.asarray(result.conditional_volatility)
     percentile = float(np.mean(history <= result.daily_volatility))
     if percentile < 1 / 3:
-        return "低风险", percentile
+        return "低", percentile
     if percentile < 2 / 3:
-        return "中风险", percentile
-    return "高风险", percentile
+        return "中", percentile
+    return "高", percentile
 
 
 def render() -> None:
@@ -33,9 +33,7 @@ def render() -> None:
     frame = data.frame
     tabs = st.tabs(["历史汇率", "日对数收益率", "20日滚动年化波动率"])
     with tabs[0]:
-        fig = px.line(
-            frame, x="date", y="rate", labels={"date": "日期", "rate": "USD/CNY"}
-        )
+        fig = px.line(frame, x="date", y="rate", labels={"date": "日期", "rate": "USD/CNY"})
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
         st.plotly_chart(fig, width="stretch")
     with tabs[1]:
@@ -77,16 +75,14 @@ def render() -> None:
     state, percentile = _volatility_state(garch)
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("下一交易日预测", f"{xgb.prediction_next_day:.4f}")
-    m1.caption(
-        f"{xgb.direction}｜较当前汇率 {xgb.prediction_next_day - xgb.previous_rate:+.4f}"
-    )
+    m1.caption(f"{xgb.direction}｜较当前汇率 {xgb.prediction_next_day - xgb.previous_rate:+.4f}")
     m2.metric("MAE", f"{xgb.mae:.6f}")
     m3.metric("RMSE", f"{xgb.rmse:.6f}")
     m4.metric("方向准确率 DA", f"{xgb.direction_accuracy:.2%}")
     g1, g2, g3 = st.columns(3)
     g1.metric("GARCH 预测日波动率", f"{garch.daily_volatility:.4%}")
     g2.metric("GARCH 预测年化波动率", f"{garch.annual_volatility:.2%}")
-    g3.metric("数据相对波动状态", state, f"历史百分位 {percentile:.1%}")
+    g3.metric("市场波动状态", state, f"历史百分位 {percentile:.1%}")
     st.caption(
         f"全量真实历史保留用于图表；模型统一使用最近窗口 {result.sample_start_date} 至 "
         f"{result.sample_end_date}（{result.sample_size} 个观测）。XGBoost 训练样本 "
