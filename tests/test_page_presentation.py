@@ -95,6 +95,17 @@ def test_chart_theme_changes_presentation_without_changing_data():
     assert figure.layout.font.color == INK
     assert figure.layout.yaxis.gridcolor == GRID
     assert figure.layout.paper_bgcolor == "#FFFFFF"
+    assert "title" not in figure.to_plotly_json()["layout"]
+
+
+def test_chart_theme_styles_only_real_titles():
+    figure = go.Figure(data=[go.Bar(x=["A"], y=[1])])
+    figure.update_layout(title_text="真实标题")
+
+    styled = style_chart(figure)
+
+    assert styled.layout.title.text == "真实标题"
+    assert styled.layout.title.font.color == INK
 
 
 def test_sidebar_navigation_keeps_radio_inputs_accessible(monkeypatch):
