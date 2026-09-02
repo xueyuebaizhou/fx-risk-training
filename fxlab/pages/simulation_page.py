@@ -7,6 +7,7 @@ from ..config import SIMULATION_PATHS
 from ..risk import budget_income, calculate_risk_metrics, hedged_income
 from ..ui import (
     AMBER,
+    CHART_PALETTE,
     CORAL,
     cny,
     page_header,
@@ -16,6 +17,43 @@ from ..ui import (
     style_chart,
 )
 from .common import ensure_simulation
+
+DISPLAY_PATHS = 80
+
+
+def _path_scenario_chart(paths: np.ndarray, spot_rate: float) -> go.Figure:
+    """Build a legible multi-colour sample without changing full-sample calculations."""
+    display_count = min(DISPLAY_PATHS, len(paths))
+    selected = np.asarray(paths[:display_count], dtype=float)
+    with_start = np.column_stack([np.full(display_count, spot_rate), selected])
+    fig = go.Figure()
+    for index, path in enumerate(with_start):
+        fig.add_trace(
+            go.Scatter(
+                x=np.arange(path.size),
+                y=path,
+                mode="lines",
+                name=f"路径 {index + 1:02d}",
+                line={
+                    "width": 0.85,
+                    "color": CHART_PALETTE[index % len(CHART_PALETTE)],
+                },
+                opacity=0.24,
+                showlegend=False,
+                hovertemplate=(
+                    "交易日 %{x}<br>USD/CNY %{y:.4f}"
+                    f"<extra>路径 {index + 1:02d}</extra>"
+                ),
+            )
+        )
+    fig.update_layout(
+        title=f"展示前 {display_count} 条路径（指标仍基于 {SIMULATION_PATHS:,} 条）",
+        xaxis_title="交易日",
+        yaxis_title="USD/CNY",
+        height=380,
+        margin={"l": 10, "r": 10, "t": 45, "b": 10},
+    )
+    return fig
 
 
 def _distribution_charts(
@@ -105,30 +143,11 @@ def render() -> None:
     st.caption(
         f"期限：{st.session_state.term_days} 个自然日 → {simulation.trading_days} 个交易日；随机种子：{simulation.seed}；日漂移：{simulation.daily_drift:.6%}；GARCH 日波动率：{simulation.daily_volatility:.4%}。"
     )
-    section_label("路径情景", "可视化抽样 80 条 · 风险指标使用全部 10,000 条")
-    display_count = 80
-    selected = simulation.paths[:display_count]
-    with_start = np.column_stack([np.full(display_count, st.session_state.spot_rate), selected])
-    fig = go.Figure()
-    for path in with_start:
-        fig.add_trace(
-            go.Scatter(
-                x=np.arange(path.size),
-                y=path,
-                mode="lines",
-                line={"width": 0.7, "color": "#7765E7"},
-                opacity=0.14,
-                showlegend=False,
-            )
-        )
-    fig.update_layout(
-        title=f"展示前 {display_count} 条路径（指标仍基于 10,000 条）",
-        xaxis_title="交易日",
-        yaxis_title="USD/CNY",
-        height=380,
-        margin={"l": 10, "r": 10, "t": 45, "b": 10},
+    section_label(
+        "路径情景",
+        f"多色可视化抽样 {DISPLAY_PATHS} 条 · 风险指标使用全部 {SIMULATION_PATHS:,} 条",
     )
-    render_chart(fig)
+    render_chart(_path_scenario_chart(simulation.paths, st.session_state.spot_rate))
     incomes = hedged_income(
         st.session_state.amount,
         st.session_state.hedge_ratio,

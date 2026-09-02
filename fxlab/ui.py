@@ -614,7 +614,7 @@ def style_chart(fig):
             trace.marker.color = color
             trace.marker.line.color = "#FFFFFF"
             trace.marker.line.width = 0.4
-        elif trace.type == "scatter":
+        elif trace.type in {"scatter", "scattergl"}:
             default_plotly_colors = {None, "#636efa", "#EF553B", "#00cc96", "#ab63fa"}
             if trace.line.color in default_plotly_colors:
                 trace.line.color = color
