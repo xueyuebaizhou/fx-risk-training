@@ -113,20 +113,26 @@ def inject_styles() -> None:
             margin: 0 .5rem .55rem;
         }
         [data-testid="stSidebar"] div[role="radiogroup"] { gap: .32rem; }
-        [data-testid="stSidebar"] label[data-baseweb="radio"] {
+        [data-testid="stSidebar"] label[data-baseweb="radio"],
+        [data-testid="stSidebar"] [data-testid="stRadioOption"] {
             min-height: 42px;
             padding: .58rem .72rem;
             border-radius: 9px;
             transition: background .15s ease, color .15s ease;
         }
-        [data-testid="stSidebar"] label[data-baseweb="radio"]:hover {
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:hover,
+        [data-testid="stSidebar"] [data-testid="stRadioOption"]:hover,
+        [data-testid="stSidebar"] [data-testid="stRadioOption"][data-hovered="true"] {
             background: rgba(255,255,255,.07);
         }
-        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input:checked) {
+        [data-testid="stSidebar"] label[data-baseweb="radio"]:has(input:checked),
+        [data-testid="stSidebar"] [data-testid="stRadioOption"]:has(input:checked),
+        [data-testid="stSidebar"] [data-testid="stRadioOption"][data-selected="true"] {
             background: rgba(141,124,243,.22);
             box-shadow: inset 3px 0 0 #9b8cf7;
         }
-        [data-testid="stSidebar"] label[data-baseweb="radio"] p {
+        [data-testid="stSidebar"] label[data-baseweb="radio"] p,
+        [data-testid="stSidebar"] [data-testid="stRadioOption"] p {
             font-size: .85rem;
             font-weight: 530;
         }
@@ -349,6 +355,9 @@ def inject_styles() -> None:
         div[data-testid="stMetric"] [data-testid="stMetricDelta"] { font-size: .72rem; }
         div[data-baseweb="input"] > div,
         div[data-baseweb="select"] > div,
+        [data-testid="stNumberInputContainer"],
+        [data-testid="stTextInputRootElement"],
+        [data-testid="stTextAreaRootElement"],
         [data-testid="stTextArea"] textarea {
             background: #fff !important;
             border-color: var(--line) !important;
@@ -356,10 +365,14 @@ def inject_styles() -> None:
         }
         div[data-baseweb="input"] > div:focus-within,
         div[data-baseweb="select"] > div:focus-within,
+        [data-testid="stNumberInputContainer"]:focus-within,
+        [data-testid="stTextInputRootElement"]:focus-within,
+        [data-testid="stTextAreaRootElement"]:focus-within,
         [data-testid="stTextArea"] textarea:focus {
             border-color: var(--primary) !important;
             box-shadow: 0 0 0 2px rgba(119,101,231,.12) !important;
         }
+        [data-testid="stNumberInputField"] { background: transparent !important; }
         .stButton > button, .stDownloadButton > button {
             min-height: 2.65rem;
             border-radius: 8px;
@@ -384,7 +397,10 @@ def inject_styles() -> None:
             border-color: var(--primary-deep);
             color: white;
         }
-        [data-testid="stSlider"] [role="slider"] { background: var(--primary) !important; }
+        [data-testid="stSlider"] [role="slider"],
+        [data-testid="stSlider"] input[type="range"] {
+            accent-color: var(--primary) !important;
+        }
         [data-testid="stSlider"] [data-baseweb="slider"] > div > div {
             background: var(--lavender) !important;
         }
@@ -421,6 +437,10 @@ def inject_styles() -> None:
             border-width: 1px;
             box-shadow: none;
         }
+        [data-testid="stAlertContentInfo"] {
+            background: #f1eeff !important;
+            color: #4d426e !important;
+        }
         [data-testid="stExpander"] {
             border-color: var(--line);
             border-radius: 9px;
@@ -428,7 +448,7 @@ def inject_styles() -> None:
         }
         [data-testid="stCaptionContainer"] p { color: var(--muted); }
         [data-testid="stHeader"] { background: rgba(248,247,251,.88); }
-        [data-testid="stToolbar"] { right: 1rem; }
+        [data-testid="stToolbarActions"] { display: none !important; }
 
         @media (max-width: 900px) {
             .block-container { padding: 1.4rem 1.05rem 3rem; }
