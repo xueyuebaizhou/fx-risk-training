@@ -7,7 +7,7 @@ from ..reporting import (
     remember_report,
     save_report,
 )
-from ..ui import page_header, scenario_summary
+from ..ui import page_header, scenario_summary, section_label
 from .common import ensure_simulation
 
 
@@ -21,6 +21,7 @@ def render() -> None:
     if simulation is None:
         return
     scenario_summary(st.session_state)
+    section_label("策略总览", "固定套保比例的收益与尾部风险对比")
     table = st.session_state.strategy_table.copy()
     display = table.copy()
     display["套保比例"] = display["套保比例"].map(lambda x: f"{x:.0%}")
@@ -29,6 +30,7 @@ def render() -> None:
     display["Risk Ratio"] = display["Risk Ratio"].map(lambda x: f"{x:.2%}")
     display["风险下降幅度"] = display["风险下降幅度"].map(lambda x: f"{x:.1%}")
     st.dataframe(display, width="stretch", hide_index=True)
+    section_label("提交决策", "选择最终策略并记录判断依据")
     st.select_slider(
         "最终选择的远期套保比例",
         options=[0.0, 0.25, 0.5, 0.75, 1.0],
@@ -84,7 +86,7 @@ def render() -> None:
             "text/html",
             width="stretch",
         )
-    st.subheader("本次运行的历史报告")
+    section_label("本次运行的历史报告", "报告仅在当前浏览器会话内可见")
     reports = st.session_state.get("generated_reports", [])
     if not reports:
         st.caption("尚未生成报告。")

@@ -5,7 +5,16 @@ import streamlit as st
 
 from ..config import SIMULATION_PATHS
 from ..risk import budget_income, calculate_risk_metrics, hedged_income
-from ..ui import cny, page_header, scenario_summary
+from ..ui import (
+    AMBER,
+    CORAL,
+    cny,
+    page_header,
+    render_chart,
+    scenario_summary,
+    section_label,
+    style_chart,
+)
 from .common import ensure_simulation
 
 
@@ -29,7 +38,7 @@ def _distribution_charts(
     rate_fig.add_vline(
         x=terminal_mean,
         line_dash="dash",
-        line_color="#e07a1f",
+        line_color=AMBER,
         line_width=2,
         annotation_text=f"均值 {terminal_mean:.4f}",
         annotation_position="top right",
@@ -50,7 +59,7 @@ def _distribution_charts(
         income_fig.add_vline(
             x=income_mean,
             line_dash="dash",
-            line_color="#c33c36",
+            line_color=CORAL,
             line_width=2,
             annotation_text=f"均值 = 5%分位 {income_mean:.2f} 万元",
             annotation_position="top right",
@@ -59,7 +68,7 @@ def _distribution_charts(
         income_fig.add_vline(
             x=income_mean,
             line_dash="dash",
-            line_color="#e07a1f",
+            line_color=AMBER,
             line_width=2,
             annotation_text=f"均值 {income_mean:.2f} 万元",
             annotation_position="top right",
@@ -67,7 +76,7 @@ def _distribution_charts(
         income_fig.add_vline(
             x=income_q05,
             line_dash="dash",
-            line_color="#c33c36",
+            line_color=CORAL,
             line_width=2,
             annotation_text=f"5%分位 {income_q05:.2f} 万元",
             annotation_position="top left",
@@ -77,7 +86,7 @@ def _distribution_charts(
         height=350,
         margin={"l": 10, "r": 10, "t": 45, "b": 10},
     )
-    return rate_fig, income_fig
+    return style_chart(rate_fig), style_chart(income_fig)
 
 
 def render() -> None:
@@ -96,6 +105,7 @@ def render() -> None:
     st.caption(
         f"期限：{st.session_state.term_days} 个自然日 → {simulation.trading_days} 个交易日；随机种子：{simulation.seed}；日漂移：{simulation.daily_drift:.6%}；GARCH 日波动率：{simulation.daily_volatility:.4%}。"
     )
+    section_label("路径情景", "可视化抽样 80 条 · 风险指标使用全部 10,000 条")
     display_count = 80
     selected = simulation.paths[:display_count]
     with_start = np.column_stack([np.full(display_count, st.session_state.spot_rate), selected])
@@ -106,8 +116,8 @@ def render() -> None:
                 x=np.arange(path.size),
                 y=path,
                 mode="lines",
-                line={"width": 0.7},
-                opacity=0.25,
+                line={"width": 0.7, "color": "#7765E7"},
+                opacity=0.14,
                 showlegend=False,
             )
         )
@@ -118,7 +128,7 @@ def render() -> None:
         height=380,
         margin={"l": 10, "r": 10, "t": 45, "b": 10},
     )
-    st.plotly_chart(fig, width="stretch")
+    render_chart(fig)
     incomes = hedged_income(
         st.session_state.amount,
         st.session_state.hedge_ratio,
@@ -137,9 +147,9 @@ def render() -> None:
     )
     c1, c2 = st.columns(2)
     with c1:
-        st.plotly_chart(rate_fig, width="stretch")
+        render_chart(rate_fig)
     with c2:
-        st.plotly_chart(income_fig, width="stretch")
+        render_chart(income_fig)
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("平均收入", cny(metrics.mean_income))
     m2.metric("5%分位数收入", cny(metrics.q05_income))
@@ -152,7 +162,7 @@ def render() -> None:
         display[col] = display[col].map(lambda x: f"{x:,.2f}")
     display["Risk Ratio"] = display["Risk Ratio"].map(lambda x: f"{x:.2%}")
     display["风险下降幅度"] = display["风险下降幅度"].map(lambda x: f"{x:.1%}")
-    st.subheader("固定比例策略比较")
+    section_label("固定比例策略比较", "统一终值样本 · 结果可直接横向比较")
     st.dataframe(display, width="stretch", hide_index=True)
     chart = table.copy()
     chart["套保比例"] = chart["套保比例"].map(lambda x: f"{x:.0%}")
@@ -164,4 +174,4 @@ def render() -> None:
         title="尾部风险与收入波动比较",
     )
     fig.update_layout(height=350, margin={"l": 10, "r": 10, "t": 45, "b": 10}, yaxis_title="CNY")
-    st.plotly_chart(fig, width="stretch")
+    render_chart(fig)
