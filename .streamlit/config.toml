@@ -1,14 +1,15 @@
+[client]
+showErrorDetails = "none"
+toolbarMode = "minimal"
+
 [theme]
-primaryColor = "#1F5F99"
-backgroundColor = "#F7F9FC"
-secondaryBackgroundColor = "#EEF5FB"
-textColor = "#26384A"
+base = "light"
+primaryColor = "#7765E7"
+backgroundColor = "#F8F7FB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#24212F"
 font = "sans serif"
 
 [server]
 headless = true
 maxUploadSize = 20
-
-[client]
-showErrorDetails = "none"
-toolbarMode = "minimal"

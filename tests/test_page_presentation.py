@@ -1,3 +1,5 @@
+import tomllib
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -107,4 +109,18 @@ def test_sidebar_navigation_keeps_radio_inputs_accessible(monkeypatch):
 
     stylesheet = rendered[0][0]
     assert 'label[data-baseweb="radio"] > div:first-child' not in stylesheet
+    assert '[data-testid="stRadioOption"][data-selected="true"]' in stylesheet
+    assert '[data-testid="stNumberInputContainer"]' in stylesheet
+    assert '[data-testid="stToolbarActions"]' in stylesheet
     assert rendered[0][1] is True
+
+
+def test_streamlit_theme_matches_shared_product_palette():
+    config_path = Path(__file__).parents[1] / ".streamlit" / "config.toml"
+    with config_path.open("rb") as config_file:
+        config = tomllib.load(config_file)
+
+    assert config["client"]["toolbarMode"] == "minimal"
+    assert config["theme"]["primaryColor"] == PRIMARY
+    assert config["theme"]["backgroundColor"] == "#F8F7FB"
+    assert config["theme"]["secondaryBackgroundColor"] == "#FFFFFF"

@@ -34,13 +34,25 @@ def render() -> None:
     section_label("历史行情概览", "全量真实数据仅用于回溯与可视化")
     tabs = st.tabs(["历史汇率", "日对数收益率", "20日滚动年化波动率"])
     with tabs[0]:
-        fig = px.line(frame, x="date", y="rate", labels={"date": "日期", "rate": "USD/CNY"})
+        fig = px.line(
+            frame,
+            x="date",
+            y="rate",
+            labels={"date": "日期", "rate": "USD/CNY"},
+            render_mode="svg",
+        )
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
         render_chart(fig)
     with tabs[1]:
         returns = frame.dropna(subset=["log_return"]).copy()
         returns["收益率（%）"] = returns["log_return"] * 100
-        fig = px.line(returns, x="date", y="收益率（%）", labels={"date": "日期"})
+        fig = px.line(
+            returns,
+            x="date",
+            y="收益率（%）",
+            labels={"date": "日期"},
+            render_mode="svg",
+        )
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
         render_chart(fig)
     with tabs[2]:
@@ -50,6 +62,7 @@ def render() -> None:
             x="date",
             y="rolling_vol_20",
             labels={"date": "日期", "rolling_vol_20": "年化波动率"},
+            render_mode="svg",
         )
         fig.update_yaxes(tickformat=".1%")
         fig.update_layout(height=340, margin={"l": 10, "r": 10, "t": 25, "b": 10})
