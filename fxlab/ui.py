@@ -130,9 +130,6 @@ def inject_styles() -> None:
             font-size: .85rem;
             font-weight: 530;
         }
-        [data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child {
-            display: none;
-        }
         .sidebar-market {
             margin: 1.25rem .2rem 0;
             padding: 1rem .85rem;

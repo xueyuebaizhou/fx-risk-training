@@ -7,7 +7,7 @@ import streamlit as st
 
 from fxlab.pages.model_page import _volatility_state
 from fxlab.pages.simulation_page import _distribution_charts
-from fxlab.ui import GRID, INK, PRIMARY, cny, risk_badge, style_chart
+from fxlab.ui import GRID, INK, PRIMARY, cny, inject_styles, risk_badge, style_chart
 
 
 @pytest.mark.parametrize(
@@ -93,3 +93,18 @@ def test_chart_theme_changes_presentation_without_changing_data():
     assert figure.layout.font.color == INK
     assert figure.layout.yaxis.gridcolor == GRID
     assert figure.layout.paper_bgcolor == "#FFFFFF"
+
+
+def test_sidebar_navigation_keeps_radio_inputs_accessible(monkeypatch):
+    rendered = []
+    monkeypatch.setattr(
+        st,
+        "markdown",
+        lambda body, unsafe_allow_html: rendered.append((body, unsafe_allow_html)),
+    )
+
+    inject_styles()
+
+    stylesheet = rendered[0][0]
+    assert 'label[data-baseweb="radio"] > div:first-child' not in stylesheet
+    assert rendered[0][1] is True
