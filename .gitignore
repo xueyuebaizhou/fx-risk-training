@@ -15,6 +15,7 @@ venv/
 
 node_modules/
 .next/
+/out/
 frontend/out/
 frontend/.next/
 npm-debug.log*
