@@ -9,7 +9,15 @@ htmlcov/
 venv/
 .env
 .env.*
+!.env.example
+!frontend/.env.example
 .streamlit/secrets.toml
+
+node_modules/
+.next/
+frontend/out/
+frontend/.next/
+npm-debug.log*
 
 reports/*.pdf
 reports/*.html
