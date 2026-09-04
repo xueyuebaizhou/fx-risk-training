@@ -200,13 +200,11 @@ export function PathChart({ paths }: { paths: AnalysisData["simulation"]["paths"
 
 export function HistogramChart({
   data,
-  reference,
-  referenceLabel,
+  references,
   unit = "",
 }: {
   data: { x: number; count: number }[];
-  reference: number;
-  referenceLabel: string;
+  references: { value: number; label: string; color?: string }[];
   unit?: string;
 }) {
   return (
@@ -217,7 +215,23 @@ export function HistogramChart({
           <XAxis type="number" dataKey="x" domain={["dataMin", "dataMax"]} tick={axis} tickLine={false} axisLine={false} minTickGap={40} tickFormatter={(value: number) => `${value.toFixed(2)}${unit}`} />
           <YAxis tick={axis} tickLine={false} axisLine={false} width={48} />
           <Tooltip contentStyle={tooltipStyle} labelFormatter={(value) => `${Number(value).toFixed(4)}${unit}`} />
-          <ReferenceLine x={reference} stroke="#d66f62" strokeDasharray="5 4" label={{ value: referenceLabel, fill: "#a64d45", fontSize: 11, position: "insideTopRight" }} />
+          {references.map((reference, index) => {
+            const color = reference.color || (index === 0 ? "#00a486" : "#d66f62");
+            return (
+              <ReferenceLine
+                key={`${reference.label}-${reference.value}`}
+                x={reference.value}
+                stroke={color}
+                strokeDasharray="5 4"
+                label={{
+                  value: reference.label,
+                  fill: color,
+                  fontSize: 11,
+                  position: index % 2 === 0 ? "insideTopLeft" : "insideTopRight",
+                }}
+              />
+            );
+          })}
           <Bar dataKey="count" name="模拟次数" fill="#7563de" radius={[5, 5, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>

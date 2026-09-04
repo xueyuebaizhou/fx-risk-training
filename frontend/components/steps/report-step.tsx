@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Download, FileCheck2, FileText, Scale } from "lucide-react";
 
 import { Reveal } from "@/components/reveal";
 import { LockedState, PageHeader, PrimaryButton, SectionHeading } from "@/components/ui";
 import { requestReport } from "@/lib/api";
 import { formatCny, formatPercent } from "@/lib/format";
+import { calculateMetrics } from "@/lib/risk";
 import { useTraining } from "@/lib/training-context";
 
 function saveBlob(blob: Blob, filename: string) {
@@ -26,9 +27,16 @@ export function ReportStep() {
   const [reason, setReason] = useState("");
   const [downloading, setDownloading] = useState<"pdf" | "html" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  if (!analysis) return <LockedState />;
-
-  const selected = analysis.strategies.find((row) => row.ratio === finalRatio) || analysis.strategies[2];
+  const selected = useMemo(() => {
+    if (!analysis) return null;
+    return analysis.strategies.find((row) => row.ratio === finalRatio) || calculateMetrics(
+      analysis.simulation.terminalRates,
+      inputs,
+      analysis.inputs.spotRate,
+      finalRatio,
+    );
+  }, [analysis, finalRatio, inputs]);
+  if (!analysis || !selected) return <LockedState />;
 
   const download = async (format: "pdf" | "html") => {
     if (!reason.trim()) {

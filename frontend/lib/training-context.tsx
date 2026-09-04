@@ -22,6 +22,16 @@ const DEFAULT_INPUTS: ScenarioInputs = {
   hedgeRatio: 0.5,
 };
 
+function normaliseInput(key: keyof ScenarioInputs, value: number): number | null {
+  if (!Number.isFinite(value)) return null;
+  if (key === "amount") return Math.min(1_000_000_000, Math.max(1, value));
+  if (key === "termDays") return Math.round(Math.min(730, Math.max(1, value)));
+  if (key === "budgetRate" || key === "forwardRate") {
+    return Math.min(20, Math.max(1, value));
+  }
+  return Math.min(1, Math.max(0, value));
+}
+
 type TrainingContextValue = {
   activeStep: StepId;
   setActiveStep: (step: StepId) => void;
@@ -70,7 +80,9 @@ export function TrainingProvider({ children }: { children: ReactNode }) {
 
   const updateInput = useCallback(
     <K extends keyof ScenarioInputs>(key: K, value: ScenarioInputs[K]) => {
-      setInputs((current) => ({ ...current, [key]: value }));
+      const accepted = normaliseInput(key, Number(value));
+      if (accepted === null) return;
+      setInputs((current) => ({ ...current, [key]: accepted }));
       setError(null);
     },
     [],

@@ -47,8 +47,8 @@ export function SimulationStep() {
         <section className="content-section">
           <SectionHeading title="终值与收入分布" note={`当前策略：${formatPercent(inputs.hedgeRatio, 0)} 远期套保`} />
           <div className="two-chart-grid">
-            <article className="chart-panel"><div className="panel-title"><Binary size={18} /><div><h3>到期 USD/CNY 分布</h3><p>纵轴为模拟次数</p></div></div><HistogramChart data={analysis.simulation.terminalHistogram} reference={analysis.simulation.terminalMean} referenceLabel={`均值 ${analysis.simulation.terminalMean.toFixed(4)}`} /></article>
-            <article className="chart-panel"><div className="panel-title"><Binary size={18} /><div><h3>人民币收入分布</h3><p>单位：万元 · 纵轴为模拟次数</p></div></div><HistogramChart data={analysis.simulation.incomeHistogram} reference={metrics.q05Income / 10_000} referenceLabel={`5%分位 ${(metrics.q05Income / 10_000).toFixed(2)}万`} unit="万" /></article>
+            <article className="chart-panel"><div className="panel-title"><Binary size={18} /><div><h3>到期 USD/CNY 分布</h3><p>纵轴为模拟次数</p></div></div><HistogramChart data={analysis.simulation.terminalHistogram} references={[{ value: analysis.simulation.terminalMean, label: `均值 ${analysis.simulation.terminalMean.toFixed(4)}` }]} /></article>
+            <article className="chart-panel"><div className="panel-title"><Binary size={18} /><div><h3>人民币收入分布</h3><p>单位：万元 · 纵轴为模拟次数</p></div></div><HistogramChart data={analysis.simulation.incomeHistogram} references={[{ value: metrics.meanIncome / 10_000, label: `均值 ${(metrics.meanIncome / 10_000).toFixed(2)}万` }, { value: metrics.q05Income / 10_000, label: `5%分位 ${(metrics.q05Income / 10_000).toFixed(2)}万`, color: "#d66f62" }]} unit="万" /></article>
           </div>
           <div className="metric-grid metric-grid-4">
             <Metric label="平均收入" value={formatCny(metrics.meanIncome)} meta="完整情景均值" />
