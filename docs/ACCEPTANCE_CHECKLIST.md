@@ -1,5 +1,15 @@
 # 第一版验收清单
 
+## Next.js / FastAPI 迁移
+
+- [x] Next.js 六模块前端可独立构建
+- [x] FastAPI 健康检查、行情、分析和报告接口通过
+- [x] 新前端不依赖 Streamlit 会话与组件
+- [x] 修改 A、B、F、h 后在同一终值样本上即时重算
+- [x] 修改 T 后明确要求重新生成路径
+- [ ] 桌面与移动端均无横向溢出或关键控件遮挡
+- [x] 滚动入场动效尊重 `prefers-reduced-motion`
+
 ## 项目隔离
 
 - [x] 只修改`fx-risk-training`仓库
